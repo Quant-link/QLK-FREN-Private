@@ -1,3 +1,5 @@
 requests
 gTTS
-playsound 
+playsound
+pytest
+pytest-mock 
