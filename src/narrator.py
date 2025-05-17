@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # Use temp audio file from app_settings if available
 TEMP_AUDIO_FILE = app_settings.temp_audio_file if app_settings else "temp_price_narration.mp3"
 
-def narrate_price(crypto_name: str, price: float, currency: str = "USD") -> None:
+def narrate_price(crypto_name: str, price: float, currency: str = "USD", lang: str = 'en', slow: bool = False) -> None:
     """
     Narrates the given cryptocurrency name and price using gTTS.
 
@@ -18,6 +18,8 @@ def narrate_price(crypto_name: str, price: float, currency: str = "USD") -> None
         crypto_name (str): The name of the cryptocurrency.
         price (float): The price of the cryptocurrency.
         currency (str): The currency of the price (e.g., "USD", "EUR").
+        lang (str): The language for narration.
+        slow (bool): Whether to narrate slowly.
     """
     if not app_settings:
         logger.error("Application settings not loaded. Narration may use default or hardcoded values and might not function as expected.")
@@ -27,13 +29,23 @@ def narrate_price(crypto_name: str, price: float, currency: str = "USD") -> None
     logger.info(f"Preparing to narrate: {text_to_narrate}")
 
     current_temp_audio_file = TEMP_AUDIO_FILE
-    if app_settings and app_settings.temp_audio_file:
-        current_temp_audio_file = app_settings.temp_audio_file
+    # Use provided lang and slow parameters, falling back to app_settings or defaults if necessary
+    narration_language = lang
+    narration_is_slow = slow
+
+    if app_settings:
+        if app_settings.temp_audio_file:
+            current_temp_audio_file = app_settings.temp_audio_file
+        # CLI/direct parameters take precedence. If they were not default, they are used.
+        # If they were default, then config settings are effectively used (via main.py defaults for CLI).
     else:
         logger.warning(f"Using default temporary audio file name: {current_temp_audio_file}")
+        logger.warning(f"Using narration language: {narration_language} (app_settings not available)")
+        logger.warning(f"Using narration speed (slow={narration_is_slow}) (app_settings not available)")
 
     try:
-        tts = gTTS(text=text_to_narrate, lang='en', slow=False)
+        logger.info(f"Narrating with language: '{narration_language}', slow: {narration_is_slow}")
+        tts = gTTS(text=text_to_narrate, lang=narration_language, slow=narration_is_slow)
         logger.debug(f"Saving TTS audio to {current_temp_audio_file}")
         tts.save(current_temp_audio_file)
         logger.debug(f"Playing audio file: {current_temp_audio_file}")

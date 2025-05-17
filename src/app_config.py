@@ -46,6 +46,8 @@ class AppConfig:
 
         # Narrator Settings
         self.temp_audio_file = self.config.get('Logging', 'TEMP_AUDIO_FILE', fallback='temp_price_narration.mp3')
+        self.narration_lang = self.config.get('Narrator', 'NARRATION_LANG', fallback='en')
+        self.narration_slow = self.config.getboolean('Narrator', 'NARRATION_SLOW', fallback=False)
         
         # Logging Settings
         self.log_level = self.config.get('Logging', 'LOG_LEVEL', fallback='INFO').upper()

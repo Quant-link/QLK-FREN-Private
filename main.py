@@ -40,6 +40,8 @@ def main():
 
     default_crypto = app_settings.default_crypto_id
     default_currency = app_settings.default_vs_currency
+    default_narration_lang = app_settings.narration_lang
+    default_narration_slow = app_settings.narration_slow
 
     parser = argparse.ArgumentParser(
         description="Fetches cryptocurrency prices and narrates them.",
@@ -62,6 +64,18 @@ def main():
         action="store_true",
         help="Enable debug level logging (overrides config file setting)."
     )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default=default_narration_lang,
+        help=f"Language for narration (e.g., en, es, fr). \nDefault from config: {default_narration_lang}"
+    )
+    parser.add_argument(
+        "--slow",
+        action=argparse.BooleanOptionalAction, # Allows --slow or --no-slow
+        default=default_narration_slow,
+        help=f"Use slow narration speed. \nDefault from config: {default_narration_slow}"
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -76,7 +90,13 @@ def main():
 
     if crypto_name and price is not None:
         logger.info(f"Fetched Price: {crypto_name} - {price:,.2f} {currency_to_fetch.upper()}")
-        narrate_price(crypto_name, price, currency_to_fetch.upper())
+        # Override config settings with CLI args if provided
+        narration_lang_to_use = args.lang if args.lang else default_narration_lang
+        narration_slow_to_use = args.slow # This will be True, False, or None (if not used). Default is from config.
+        
+        # If args.slow was not used, BooleanOptionalAction sets it to the default from config.
+        # If it was used (--slow or --no-slow), it will be True or False respectively.
+        narrate_price(crypto_name, price, currency_to_fetch.upper(), lang=narration_lang_to_use, slow=narration_slow_to_use)
     else:
         logger.error(f"Could not retrieve price information for {crypto_id_to_fetch.capitalize()}. Check logs for details.")
 
