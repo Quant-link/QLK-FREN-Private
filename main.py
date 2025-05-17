@@ -100,6 +100,11 @@ def main():
             f"Default from config: {default_narration_slow}"
         ),
     )
+    parser.add_argument(
+        "--force-new",
+        action="store_true",
+        help="Force creation of new narration even if a cached version exists.",
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -119,24 +124,28 @@ def main():
             f"Fetched Price: {crypto_name} - {price:,.2f} {currency_to_fetch.upper()}"
         )
         # Override config settings with CLI args if provided
-        narration_lang_to_use = args.lang if args.lang else default_narration_lang
-        narration_slow_to_use = (
-            args.slow
-        )  # This will be True, False, or None (if not used). Default is from config.
+        narration_lang_to_use = args.lang
+        narration_slow_to_use = args.slow
+        force_new = args.force_new
 
-        # If args.slow was not used, BooleanOptionalAction sets it to the default from config.
-        # If it was used (--slow or --no-slow), it will be True or False respectively.
-        narrate_price(
+        # Narrate the price with the specified parameters
+        narration_result = narrate_price(
             crypto_name,
             price,
             currency_to_fetch.upper(),
             lang=narration_lang_to_use,
             slow=narration_slow_to_use,
+            force_new=force_new,
         )
+        
+        if not narration_result:
+            logger.error("Narration failed. Check logs for more details.")
+            sys.exit(2)  # Exit with error code 2 for narration failure
     else:
         logger.error(
             f"Could not retrieve price for {crypto_id_to_fetch.capitalize()}. Check logs."
-        )  # noqa: E501
+        )
+        sys.exit(3)  # Exit with error code 3 for price retrieval failure
 
 
 if __name__ == "__main__":

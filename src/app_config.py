@@ -1,6 +1,8 @@
 import configparser
 import logging
 import os
+import json
+from typing import Dict, Any, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +14,7 @@ class AppConfig:
 
     def __init__(self, config_file_path=CONFIG_FILE_PATH):
         self.config = configparser.ConfigParser()
+        self.config_file_path = config_file_path
 
         if not os.path.exists(config_file_path):
             logger.critical(
@@ -20,7 +23,7 @@ class AppConfig:
             )
             # In a real app, you might want to create a default config or raise a specific error
             raise FileNotFoundError(
-                "Configuration file '{config_file_path}' not found."
+                f"Configuration file '{config_file_path}' not found."
             )
 
         try:
@@ -84,11 +87,132 @@ class AppConfig:
         self.keep_audio_on_error = self.config.getboolean(
             "Narrator", "KEEP_AUDIO_ON_ERROR", fallback=False
         )
+        
+        # Cache Settings
+        self.cache_enabled = self.config.getboolean(
+            "Cache", "ENABLED", fallback=True
+        )
+        self.cache_expiration = self.config.getint(
+            "Cache", "EXPIRATION", fallback=300
+        )  # Default: 5 minutes
+        self.cache_max_items = self.config.getint(
+            "Cache", "MAX_ITEMS", fallback=100
+        )
 
         # Logging Settings
         self.log_level = self.config.get(
             "Logging", "LOG_LEVEL", fallback="INFO"
         ).upper()
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the configuration to a dictionary for easy serialization/deserialization.
+        
+        Returns:
+            Dict[str, Any]: Dictionary representation of the configuration
+        """
+        result = {}
+        for key, value in self.__dict__.items():
+            if key != 'config' and key != 'config_file_path' and not key.startswith('_'):
+                if isinstance(value, set):
+                    result[key] = list(value)
+                else:
+                    result[key] = value
+        return result
+        
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AppConfig':
+        """
+        Create an AppConfig instance from a dictionary.
+        
+        Args:
+            data (Dict[str, Any]): Dictionary with configuration values
+            
+        Returns:
+            AppConfig: A new AppConfig instance with the values from the dictionary
+        """
+        instance = cls.__new__(cls)
+        instance.config = None
+        instance.config_file_path = None
+        
+        for key, value in data.items():
+            if key == 'retryable_status_codes' and isinstance(value, list):
+                setattr(instance, key, set(value))
+            else:
+                setattr(instance, key, value)
+                
+        return instance
+        
+    def save(self, config_file_path: Optional[str] = None) -> bool:
+        """
+        Save the current configuration to the config file.
+        
+        Args:
+            config_file_path (Optional[str]): Path to save the config file to. 
+                                             If None, uses the original path.
+                                             
+        Returns:
+            bool: True if the save was successful, False otherwise
+        """
+        if not self.config:
+            logger.error("Cannot save configuration: No config parser instance")
+            return False
+            
+        save_path = config_file_path or self.config_file_path
+        if not save_path:
+            logger.error("Cannot save configuration: No config file path")
+            return False
+            
+        try:
+            # Update config with current values
+            self._update_config_from_attributes()
+            
+            # Write to file
+            with open(save_path, 'w') as config_file:
+                self.config.write(config_file)
+                
+            logger.info(f"Configuration saved to {save_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save configuration to {save_path}: {e}", exc_info=True)
+            return False
+            
+    def _update_config_from_attributes(self):
+        """Update the ConfigParser instance with the current attribute values."""
+        # Ensure all required sections exist
+        for section in ["API", "Retry", "Defaults", "Narrator", "Logging", "Cache"]:
+            if not self.config.has_section(section):
+                self.config.add_section(section)
+                
+        # API Settings
+        self.config.set("API", "BASE_URL", str(self.api_base_url))
+        self.config.set("API", "PRICE_ENDPOINT", str(self.api_price_endpoint))
+        self.config.set("API", "REQUEST_TIMEOUT", str(self.api_request_timeout))
+        
+        # Retry Settings
+        self.config.set("Retry", "MAX_RETRIES", str(self.retry_max_retries))
+        self.config.set("Retry", "INITIAL_BACKOFF_DELAY", str(self.retry_initial_backoff))
+        self.config.set("Retry", "BACKOFF_FACTOR", str(self.retry_backoff_factor))
+        self.config.set("Retry", "RETRYABLE_STATUS_CODES", 
+                       ",".join(str(code) for code in self.retryable_status_codes))
+        
+        # Default CLI argument values
+        self.config.set("Defaults", "CRYPTO_ID", str(self.default_crypto_id))
+        self.config.set("Defaults", "VS_CURRENCY", str(self.default_vs_currency))
+        
+        # Narrator Settings
+        self.config.set("Narrator", "NARRATION_LANG", str(self.narration_lang))
+        self.config.set("Narrator", "NARRATION_SLOW", str(self.narration_slow))
+        self.config.set("Narrator", "KEEP_AUDIO_ON_ERROR", str(self.keep_audio_on_error))
+        
+        # Cache Settings
+        self.config.set("Cache", "ENABLED", str(self.cache_enabled))
+        self.config.set("Cache", "EXPIRATION", str(self.cache_expiration))
+        self.config.set("Cache", "MAX_ITEMS", str(self.cache_max_items))
+        
+        # Logging Settings
+        self.config.set("Logging", "TEMP_AUDIO_FILE", str(self.temp_audio_file))
+        self.config.set("Logging", "LOG_LEVEL", str(self.log_level))
 
 
 # Create a single instance of the config to be imported by other modules

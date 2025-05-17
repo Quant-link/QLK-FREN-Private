@@ -10,6 +10,8 @@ MVP for QuantLink's FREN: A command-line application that fetches real-time cryp
 *   Command-line interface for ease of use.
 *   Cross-platform audio playback with automatic fallback mechanisms.
 *   Configurable narration language and speed.
+*   Smart caching system to avoid redundant API calls and narrations.
+*   Robust error handling and configuration management.
 
 ## Prerequisites
 
@@ -54,6 +56,7 @@ python main.py --crypto <crypto_id> --currency <currency_code>
 *   `--currency`: (Optional) The currency code for the price (e.g., `usd`, `eur`). Defaults to `usd`.
 *   `--lang`: (Optional) Language for narration (e.g., `en`, `es`, `fr`). Defaults to value in config.ini.
 *   `--slow`: (Optional) Use slower narration speed. Use `--no-slow` for normal speed. Defaults to value in config.ini.
+*   `--force-new`: (Optional) Force creation of new narration even if a cached version exists.
 *   `--debug`: (Optional) Enable debug level logging.
 
 **Examples:**
@@ -73,6 +76,10 @@ python main.py --crypto <crypto_id> --currency <currency_code>
 *   Narrate Bitcoin price in Spanish with slow speed:
     ```bash
     python main.py --lang es --slow
+    ```
+*   Force a new narration, bypassing the cache:
+    ```bash
+    python main.py --force-new
     ```
 
 ## Project Structure
@@ -122,6 +129,11 @@ The application uses a `config.ini` file for configuration with these key sectio
 - `NARRATION_SLOW`: Whether to use slow narration speed
 - `KEEP_AUDIO_ON_ERROR`: Whether to keep audio files when playback fails
 
+### [Cache]
+- `ENABLED`: Whether to enable the narration cache
+- `EXPIRATION`: How long to keep cached narrations (in seconds)
+- `MAX_ITEMS`: Maximum number of items to keep in the cache
+
 ## Notes
 
 *   Cross-platform audio playback is supported with automatic fallbacks:
@@ -130,6 +142,10 @@ The application uses a `config.ini` file for configuration with these key sectio
     - Linux: Tries multiple players (paplay, aplay, mpg123, mpg321) if playsound fails
 *   When audio playback fails, the file location is displayed so you can play it manually if needed.
 *   You can set `KEEP_AUDIO_ON_ERROR = True` in config.ini to retain audio files when playback fails.
+*   Narration caching saves resources by reusing recent narrations for the same price:
+    - Cache entries expire after the time specified in `EXPIRATION` (default: 5 minutes)
+    - Override caching with the `--force-new` command line option
+    - Disable caching by setting `ENABLED = False` in the `[Cache]` section of config.ini
 
 ## Project Purpose, Roadmap, and Development Plan
 
@@ -143,17 +159,19 @@ The **QuantLink FREN Core Narrator** serves as the Minimum Viable Product (MVP) 
 
 This MVP validates the core concept of fetching and narrating financial data, paving the way for future enhancements and integrations within the broader QuantLink ecosystem. It demonstrates the technical feasibility of combining data retrieval with AI-driven voice output for delivering timely information.
 
-### Current Status: MVP Achieved
+### Current Status: MVP Achieved and Enhanced
 
-The current version of this repository successfully implements the core MVP functionalities:
-*   **Price Fetching:** Connects to the CoinGecko API to retrieve current prices for specified cryptocurrencies against various fiat currencies. Includes basic error handling.
-*   **Narration:** Uses `gTTS` (Google Text-to-Speech) to convert the fetched price into an audio narration and `playsound` to play it.
-*   **Command-Line Interface:** Allows users to specify the cryptocurrency and target currency via command-line arguments.
-*   **Basic Structure:** A modular structure with separate components for price fetching and narration.
+The current version of this repository successfully implements the core MVP functionalities with several enhancements:
+
+*   **Price Fetching:** Connects to the CoinGecko API to retrieve current prices for specified cryptocurrencies against various fiat currencies. Includes robust error handling and retries.
+*   **Narration:** Uses `gTTS` (Google Text-to-Speech) to convert the fetched price into an audio narration with reliable cross-platform playback.
+*   **Command-Line Interface:** Allows users to specify the cryptocurrency, target currency, language, narration speed, and caching behavior via command-line arguments.
+*   **Caching System:** Implements a smart caching system to avoid redundant API calls and narrations for repeated queries, improving performance and reducing resource usage.
+*   **Modular Structure:** A well-organized, modular structure with separate components for configuration, price fetching, and narration.
 
 ### Development Plan & Future Enhancements
 
-While the MVP is functional, the following steps and enhancements are planned to evolve this project into a more robust and feature-rich application. These are iterative steps and can be prioritized based on evolving requirements.
+While the enhanced MVP is functional, the following steps and enhancements are planned to evolve this project into a more robust and feature-rich application. These are iterative steps and can be prioritized based on evolving requirements.
 
 **Phase 1: Stabilisation & Refinement (Short-Term)**
 
