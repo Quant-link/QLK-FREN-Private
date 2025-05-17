@@ -8,6 +8,8 @@ MVP for QuantLink's FREN: A command-line application that fetches real-time cryp
 *   Narrates the price using Google Text-to-Speech (gTTS).
 *   Supports specifying cryptocurrency ID and currency (default: Bitcoin in USD).
 *   Command-line interface for ease of use.
+*   Cross-platform audio playback with automatic fallback mechanisms.
+*   Configurable narration language and speed.
 
 ## Prerequisites
 
@@ -50,6 +52,9 @@ python main.py --crypto <crypto_id> --currency <currency_code>
 
 *   `--crypto`: (Optional) The CoinGecko ID of the cryptocurrency (e.g., `bitcoin`, `ethereum`, `solana`). Defaults to `bitcoin`.
 *   `--currency`: (Optional) The currency code for the price (e.g., `usd`, `eur`). Defaults to `usd`.
+*   `--lang`: (Optional) Language for narration (e.g., `en`, `es`, `fr`). Defaults to value in config.ini.
+*   `--slow`: (Optional) Use slower narration speed. Use `--no-slow` for normal speed. Defaults to value in config.ini.
+*   `--debug`: (Optional) Enable debug level logging.
 
 **Examples:**
 
@@ -65,24 +70,66 @@ python main.py --crypto <crypto_id> --currency <currency_code>
     ```bash
     python main.py --crypto solana --currency eur
     ```
+*   Narrate Bitcoin price in Spanish with slow speed:
+    ```bash
+    python main.py --lang es --slow
+    ```
 
 ## Project Structure
 
 ```
 quantlink-fren-core-narrator/
+├── config.ini          # Application configuration
 ├── src/
 │   ├── __init__.py
+│   ├── app_config.py   # Configuration management
 │   ├── price_fetcher.py
 │   └── narrator.py
+├── tests/              # Unit tests
+│   ├── __init__.py
+│   ├── test_price_fetcher.py
+│   └── test_narrator.py
 ├── main.py
 ├── requirements.txt
 └── README.md
 ```
 
+## Configuration
+
+The application uses a `config.ini` file for configuration with these key sections:
+
+### [API]
+- `BASE_URL`: Base URL for the CoinGecko API
+- `PRICE_ENDPOINT`: API endpoint for price data
+- `REQUEST_TIMEOUT`: Timeout for API requests in seconds
+
+### [Retry]
+- `MAX_RETRIES`: Maximum number of API request retry attempts
+- `INITIAL_BACKOFF_DELAY`: Initial delay before the first retry (seconds)
+- `BACKOFF_FACTOR`: Multiplier for backoff between retries
+- `RETRYABLE_STATUS_CODES`: HTTP status codes that warrant a retry
+
+### [Defaults]
+- `CRYPTO_ID`: Default cryptocurrency ID to fetch
+- `VS_CURRENCY`: Default currency for price data
+
+### [Logging]
+- `TEMP_AUDIO_FILE`: Temporary audio file name
+- `LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+
+### [Narrator]
+- `NARRATION_LANG`: Language for TTS narration
+- `NARRATION_SLOW`: Whether to use slow narration speed
+- `KEEP_AUDIO_ON_ERROR`: Whether to keep audio files when playback fails
+
 ## Notes
 
-*   The `playsound` library might require additional codecs or libraries on some systems (e.g., GStreamer on Linux).
-*   This application creates a temporary audio file (`temp_price_narration.mp3`) in the project root during narration, which is deleted afterward.
+*   Cross-platform audio playback is supported with automatic fallbacks:
+    - Windows: Falls back to PowerShell SoundPlayer if playsound fails
+    - macOS: Falls back to afplay if playsound fails
+    - Linux: Tries multiple players (paplay, aplay, mpg123, mpg321) if playsound fails
+*   When audio playback fails, the file location is displayed so you can play it manually if needed.
+*   You can set `KEEP_AUDIO_ON_ERROR = True` in config.ini to retain audio files when playback fails.
 
 ## Project Purpose, Roadmap, and Development Plan
 

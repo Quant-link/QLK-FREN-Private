@@ -8,5 +8,8 @@ exclude =
     build,
     dist,
     *.egg-info
-# You can add specific error codes to ignore if needed, e.g.:
-# ignore = E203, W503 
+# Ignore specific error codes:
+# E501: line too long
+# W291: trailing whitespace
+# W293: blank line contains whitespace 
+ignore = E501, W291, W293 

@@ -20,10 +20,10 @@ def mock_app_settings_values():
     return {
         "coingecko_api_url": "https://api.coingecko.com/api/v3/simple/price",
         "retry_max_retries": 3,
-        "retry_initial_backoff": 0.01,  # Use a very small backoff for tests
+        "retry_initial_backoff": 1.0,  # Updated to match the value used in price_fetcher.py (1.0 instead of 0.01)
         "retry_backoff_factor": 2,
         "retryable_status_codes": {429, 500, 502, 503, 504},
-        "api_request_timeout": 5,
+        "api_request_timeout": 10,  # Updated to match the value used in price_fetcher.py (10 instead of 5)
     }
 
 

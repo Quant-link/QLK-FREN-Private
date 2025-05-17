@@ -1,6 +1,8 @@
 from gtts import gTTS
 from playsound import playsound
 import os
+import platform
+import subprocess
 import logging
 from src.app_config import app_settings  # Import the application settings
 
@@ -11,6 +13,65 @@ logger = logging.getLogger(__name__)
 TEMP_AUDIO_FILE = (
     app_settings.temp_audio_file if app_settings else "temp_price_narration.mp3"
 )
+
+
+def play_audio_fallback(audio_file_path: str) -> bool:
+    """
+    Platform-specific fallback for audio playback when playsound fails.
+    Returns True if playback succeeded, False otherwise.
+    
+    Args:
+        audio_file_path (str): Path to the audio file to play.
+    
+    Returns:
+        bool: True if playback succeeded, False otherwise.
+    """
+    system = platform.system().lower()
+    success = False
+    
+    logger.debug(f"Attempting fallback audio playback on {system} platform")
+    
+    try:
+        if system == "windows":
+            # Windows fallback using PowerShell
+            command = [
+                "powershell",
+                "-c", 
+                f"(New-Object Media.SoundPlayer '{audio_file_path}').PlaySync()"
+            ]
+            subprocess.run(command, check=True)
+            success = True
+        elif system == "darwin":  # macOS
+            # macOS fallback using afplay
+            command = ["afplay", audio_file_path]
+            subprocess.run(command, check=True)
+            success = True
+        elif system == "linux":
+            # Try multiple Linux audio players in order
+            players = [
+                ["paplay", audio_file_path],
+                ["aplay", "-q", audio_file_path],
+                ["mpg123", "-q", audio_file_path],
+                ["mpg321", "-q", audio_file_path],
+            ]
+            
+            for player in players:
+                try:
+                    subprocess.run(player, check=True)
+                    success = True
+                    break
+                except (subprocess.SubprocessError, FileNotFoundError):
+                    continue
+        
+        if success:
+            logger.info("Fallback audio playback succeeded")
+        else:
+            logger.warning(f"No suitable audio player found on {system} platform")
+            
+    except Exception as e:
+        logger.error(f"Fallback audio playback failed: {e}", exc_info=True)
+    
+    return success
 
 
 def narrate_price(
@@ -60,6 +121,9 @@ def narrate_price(
             f"Using narr. speed (slow={narration_is_slow}) (app_settings not available)"
         )
 
+    audio_file_created = False
+    playback_successful = False
+    
     try:
         logger.info(
             f"Narrating with language: '{narration_language}', slow: {narration_is_slow}"
@@ -69,20 +133,40 @@ def narrate_price(
         )
         logger.debug(f"Saving TTS audio to {current_temp_audio_file}")
         tts.save(current_temp_audio_file)
+        audio_file_created = True
+        
         logger.debug(f"Playing audio file: {current_temp_audio_file}")
-        playsound(current_temp_audio_file)
-        logger.info("Narration completed successfully.")
+        try:
+            # Primary playback method using playsound
+            playsound(current_temp_audio_file)
+            playback_successful = True
+            logger.info("Audio playback completed successfully")
+        except Exception as play_error:
+            logger.warning(f"Primary playback method failed: {play_error}. Trying fallback methods...")
+            # Try platform-specific fallback if primary method fails
+            playback_successful = play_audio_fallback(current_temp_audio_file)
+            
+        if playback_successful:
+            logger.info("Narration completed successfully")
+        else:
+            # If audio file was created but playback failed, inform the user about the file location
+            logger.error(
+                f"Could not play audio. File saved at: {os.path.abspath(current_temp_audio_file)}"
+            )
+            print(f"Audio could not be played. File saved at: {os.path.abspath(current_temp_audio_file)}")
+            
     except Exception as e:
         logger.error(f"An error occurred during narration: {e}", exc_info=True)
     finally:
-        if os.path.exists(current_temp_audio_file):
+        # Only attempt to delete the file if it was created AND we're not keeping it due to playback failure
+        if audio_file_created and (playback_successful or not app_settings or not app_settings.keep_audio_on_error):
             try:
                 logger.debug(
                     f"Attempting to delete temporary audio file: {current_temp_audio_file}"
                 )
                 os.remove(current_temp_audio_file)
                 logger.debug(
-                    f"Temporary audio file {current_temp_audio_file} deleted successfully."
+                    f"Temporary audio file {current_temp_audio_file} deleted successfully"
                 )
             except Exception as e:
                 logger.error(

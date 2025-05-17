@@ -81,6 +81,9 @@ class AppConfig:
         self.narration_slow = self.config.getboolean(
             "Narrator", "NARRATION_SLOW", fallback=False
         )
+        self.keep_audio_on_error = self.config.getboolean(
+            "Narrator", "KEEP_AUDIO_ON_ERROR", fallback=False
+        )
 
         # Logging Settings
         self.log_level = self.config.get(
