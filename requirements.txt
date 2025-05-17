@@ -2,4 +2,6 @@ requests
 gTTS
 playsound
 pytest
-pytest-mock 
+pytest-mock
+black
+flake8 
