@@ -1,8 +1,8 @@
 import argparse
 import logging
 import sys  # For exiting if config is missing
-from src.price_fetcher import get_crypto_price
-from src.narrator import narrate_price
+from src.price_fetcher import get_crypto_price, get_crypto_price_with_change, get_multiple_crypto_prices
+from src.narrator import narrate_price, narrate_price_with_change, narrate_multiple_prices
 from src.app_config import app_settings  # Import the application settings
 
 # Get a logger for this module (configuration will be set up after loading app_settings)
@@ -31,8 +31,153 @@ def setup_logging():
     logger.info(f"Logging configured to level: {log_level_str}")
 
 
+def process_single_crypto(args):
+    """
+    Processes and narrates a single cryptocurrency based on command-line arguments.
+    
+    Args:
+        args: Command-line arguments parsed by argparse
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    crypto_id_to_fetch = args.crypto.lower()
+    currency_to_fetch = args.currency.lower()
+    
+    # Determine if we need to fetch price changes
+    need_price_changes = args.with_24h_change or args.with_7d_change or args.with_30d_change
+    
+    if need_price_changes:
+        logger.info(
+            f"Fetching {crypto_id_to_fetch.capitalize()} with price changes in {currency_to_fetch.upper()}"
+        )
+        crypto_data = get_crypto_price_with_change(
+            crypto_id_to_fetch, 
+            currency_to_fetch,
+            include_24h=args.with_24h_change,
+            include_7d=args.with_7d_change,
+            include_30d=args.with_30d_change
+        )
+        
+        if crypto_data["success"] and crypto_data["current_price"] is not None:
+            logger.info(
+                f"Fetched Price: {crypto_data['name']} - {crypto_data['current_price']:,.2f} {crypto_data['currency']}"
+            )
+            
+            # Narrate the price with changes
+            narration_result = narrate_price_with_change(
+                crypto_data,
+                include_24h=args.with_24h_change,
+                include_7d=args.with_7d_change,
+                include_30d=args.with_30d_change,
+                lang=args.lang,
+                slow=args.slow,
+                force_new=args.force_new
+            )
+            
+            if not narration_result:
+                logger.error("Narration failed. Check logs for more details.")
+                return False
+            return True
+        else:
+            logger.error(
+                f"Could not retrieve price data for {crypto_id_to_fetch.capitalize()}. Check logs."
+            )
+            return False
+    else:
+        # Traditional single price fetch without changes
+        logger.info(
+            f"Starting application for {crypto_id_to_fetch.capitalize()} in {currency_to_fetch.upper()}"
+        )
+        crypto_name, price = get_crypto_price(crypto_id_to_fetch, currency_to_fetch)
+
+        if crypto_name and price is not None:
+            logger.info(
+                f"Fetched Price: {crypto_name} - {price:,.2f} {currency_to_fetch.upper()}"
+            )
+            
+            # Narrate the price
+            narration_result = narrate_price(
+                crypto_name,
+                price,
+                currency_to_fetch.upper(),
+                lang=args.lang,
+                slow=args.slow,
+                force_new=args.force_new,
+            )
+            
+            if not narration_result:
+                logger.error("Narration failed. Check logs for more details.")
+                return False
+            return True
+        else:
+            logger.error(
+                f"Could not retrieve price for {crypto_id_to_fetch.capitalize()}. Check logs."
+            )
+            return False
+
+
+def process_multiple_cryptos(args):
+    """
+    Processes and narrates multiple cryptocurrencies based on command-line arguments.
+    
+    Args:
+        args: Command-line arguments parsed by argparse
+        
+    Returns:
+        bool: True if at least one crypto was successfully narrated, False otherwise
+    """
+    crypto_ids = [crypto.strip().lower() for crypto in args.cryptos.split(',')]
+    currency_to_fetch = args.currency.lower()
+    
+    logger.info(f"Fetching prices for multiple cryptocurrencies: {', '.join(crypto_ids)}")
+    
+    # Determine if 24h changes should be included
+    include_change = args.with_24h_change
+    
+    # Fetch prices for all requested cryptocurrencies in a single API call
+    crypto_data_dict = get_multiple_crypto_prices(
+        crypto_ids,
+        currency_to_fetch,
+        include_change=include_change
+    )
+    
+    if not crypto_data_dict:
+        logger.error("Failed to fetch any cryptocurrency prices")
+        return False
+    
+    # Convert dict to list for narration
+    crypto_data_list = [data for _, data in crypto_data_dict.items() if data["success"]]
+    
+    if not crypto_data_list:
+        logger.error("No valid cryptocurrency data found for narration")
+        return False
+    
+    # Log the fetched prices
+    for crypto_data in crypto_data_list:
+        price_str = f"{crypto_data['current_price']:,.2f}" if crypto_data['current_price'] is not None else "N/A"
+        logger.info(f"Fetched: {crypto_data['name']} - {price_str} {crypto_data['currency']}")
+    
+    # Narrate all prices in sequence
+    success_count = narrate_multiple_prices(
+        crypto_data_list,
+        include_changes=include_change,
+        narrate_intro=True,
+        lang=args.lang,
+        slow=args.slow,
+        force_new=args.force_new
+    )
+    
+    if success_count > 0:
+        logger.info(f"Successfully narrated {success_count} out of {len(crypto_data_list)} cryptocurrencies")
+        return True
+    else:
+        logger.error("Failed to narrate any cryptocurrencies")
+        return False
+
+
 def main():
-    """Main function to parse arguments, fetch price, and narrate it."""
+    """Main function to parse arguments, fetch price(s), and narrate them."""
     if not app_settings:
         # This check is critical. If app_settings is None, it means config.ini was not loaded.
         logger.critical(
@@ -59,7 +204,11 @@ def main():
         description="Fetches cryptocurrency prices and narrates them.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument(
+    
+    # Create a group for single versus multiple crypto mode
+    mode_group = parser.add_mutually_exclusive_group()
+    
+    mode_group.add_argument(
         "--crypto",
         type=str,
         default=default_crypto,
@@ -68,6 +217,17 @@ def main():
             f"Default: {default_crypto}"
         ),
     )
+    
+    mode_group.add_argument(
+        "--cryptos",
+        type=str,
+        help=(
+            "Comma-separated list of CoinGecko cryptocurrency IDs for batch narration.\n"
+            "Example: 'bitcoin,ethereum,solana'\n"
+            "When this option is used, the application narrates multiple cryptocurrencies in sequence."
+        ),
+    )
+    
     parser.add_argument(
         "--currency",
         type=str,
@@ -77,11 +237,13 @@ def main():
             f"Default: {default_currency}"
         ),
     )
+    
     parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug level logging (overrides config file setting).",
     )
+    
     parser.add_argument(
         "--lang",
         type=str,
@@ -91,6 +253,7 @@ def main():
             f"Default from config: {default_narration_lang}"
         ),
     )
+    
     parser.add_argument(
         "--slow",
         action=argparse.BooleanOptionalAction,  # Allows --slow or --no-slow
@@ -100,52 +263,48 @@ def main():
             f"Default from config: {default_narration_slow}"
         ),
     )
+    
     parser.add_argument(
         "--force-new",
         action="store_true",
         help="Force creation of new narration even if a cached version exists.",
     )
+    
+    # Add price change period options
+    price_change_group = parser.add_argument_group("Price Change Options")
+    
+    price_change_group.add_argument(
+        "--with-24h-change",
+        action="store_true",
+        help="Include 24-hour price change in the narration.",
+    )
+    
+    price_change_group.add_argument(
+        "--with-7d-change",
+        action="store_true",
+        help="Include 7-day price change in the narration (requires additional API call).",
+    )
+    
+    price_change_group.add_argument(
+        "--with-30d-change",
+        action="store_true",
+        help="Include 30-day price change in the narration (requires additional API call).",
+    )
+    
     args = parser.parse_args()
 
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)  # Set root logger level to DEBUG
         logger.debug("Debug mode enabled by command line argument (overrides config).")
 
-    crypto_id_to_fetch = args.crypto.lower()
-    currency_to_fetch = args.currency.lower()
-
-    logger.info(
-        f"Starting application for {crypto_id_to_fetch.capitalize()} in {currency_to_fetch.upper()}"
-    )
-    crypto_name, price = get_crypto_price(crypto_id_to_fetch, currency_to_fetch)
-
-    if crypto_name and price is not None:
-        logger.info(
-            f"Fetched Price: {crypto_name} - {price:,.2f} {currency_to_fetch.upper()}"
-        )
-        # Override config settings with CLI args if provided
-        narration_lang_to_use = args.lang
-        narration_slow_to_use = args.slow
-        force_new = args.force_new
-
-        # Narrate the price with the specified parameters
-        narration_result = narrate_price(
-            crypto_name,
-            price,
-            currency_to_fetch.upper(),
-            lang=narration_lang_to_use,
-            slow=narration_slow_to_use,
-            force_new=force_new,
-        )
-        
-        if not narration_result:
-            logger.error("Narration failed. Check logs for more details.")
-            sys.exit(2)  # Exit with error code 2 for narration failure
+    # Process based on whether we're in single or multiple crypto mode
+    if args.cryptos:
+        result = process_multiple_cryptos(args)
     else:
-        logger.error(
-            f"Could not retrieve price for {crypto_id_to_fetch.capitalize()}. Check logs."
-        )
-        sys.exit(3)  # Exit with error code 3 for price retrieval failure
+        result = process_single_crypto(args)
+        
+    if not result:
+        sys.exit(2)  # Exit with error code 2 for narration/fetching failure
 
 
 if __name__ == "__main__":

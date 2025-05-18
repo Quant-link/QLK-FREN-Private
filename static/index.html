@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantLink FREN Narrator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .card-header {
+            background-color: #f1f8ff;
+            font-weight: bold;
+        }
+        .price-display {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .crypto-logo {
+            width: 48px;
+            height: 48px;
+            margin-right: 0.5rem;
+        }
+        .change-up {
+            color: #28a745;
+        }
+        .change-down {
+            color: #dc3545;
+        }
+        .btn-primary {
+            background-color: #1d63d1;
+            border-color: #1d63d1;
+        }
+        .btn-primary:hover {
+            background-color: #1850a9;
+            border-color: #1850a9;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        #customText {
+            height: 100px;
+        }
+        #statusMessages {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .timestamp {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">QuantLink FREN Narrator</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        Cryptocurrency Price Narrator
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="cryptoSelect" class="form-label">Select Cryptocurrency</label>
+                                    <select class="form-select" id="cryptoSelect">
+                                        <option value="bitcoin">Bitcoin (BTC)</option>
+                                        <option value="ethereum">Ethereum (ETH)</option>
+                                        <option value="solana">Solana (SOL)</option>
+                                        <option value="cardano">Cardano (ADA)</option>
+                                        <option value="xrp">XRP</option>
+                                        <option value="dogecoin">Dogecoin (DOGE)</option>
+                                        <option value="shiba-inu">Shiba Inu (SHIB)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="currencySelect" class="form-label">Select Currency</label>
+                                    <select class="form-select" id="currencySelect">
+                                        <option value="usd">US Dollar (USD)</option>
+                                        <option value="eur">Euro (EUR)</option>
+                                        <option value="gbp">British Pound (GBP)</option>
+                                        <option value="jpy">Japanese Yen (JPY)</option>
+                                        <option value="aud">Australian Dollar (AUD)</option>
+                                        <option value="cad">Canadian Dollar (CAD)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="include24hChange" checked>
+                            <label class="form-check-label" for="include24hChange">
+                                Include 24h price change
+                            </label>
+                        </div>
+
+                        <div id="priceResult" class="price-display d-none"></div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-secondary me-md-2" type="button" id="fetchPriceBtn">Fetch Price</button>
+                            <button class="btn btn-primary" type="button" id="narratePriceBtn">Narrate Price</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        Custom Text Narrator
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="customText" class="form-label">Enter Text to Narrate</label>
+                            <textarea class="form-control" id="customText" placeholder="Enter text to be narrated..."></textarea>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="languageSelect" class="form-label">Select Language</label>
+                                <select class="form-select" id="languageSelect">
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="it">Italian</option>
+                                    <option value="ja">Japanese</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mt-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="slowSpeed">
+                                        <label class="form-check-label" for="slowSpeed">
+                                            Slow speech
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="button" id="narrateTextBtn">Narrate Text</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        Status Messages
+                    </div>
+                    <div class="card-body">
+                        <div id="statusMessages" class="list-group"></div>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        API Information
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            This interface connects to the QuantLink FREN Narrator Web API.
+                            All audio is generated server-side and streamed back to the browser.
+                        </p>
+                        <p>
+                            <strong>Server Status:</strong> <span id="serverStatus">Checking...</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:5001/api';
+        
+        // DOM elements
+        const fetchPriceBtn = document.getElementById('fetchPriceBtn');
+        const narratePriceBtn = document.getElementById('narratePriceBtn');
+        const narrateTextBtn = document.getElementById('narrateTextBtn');
+        const priceResult = document.getElementById('priceResult');
+        const statusMessages = document.getElementById('statusMessages');
+        const serverStatus = document.getElementById('serverStatus');
+        
+        // Add a status message
+        function addStatusMessage(message, isError = false) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            
+            const item = document.createElement('div');
+            item.className = `list-group-item ${isError ? 'list-group-item-danger' : 'list-group-item-info'}`;
+            
+            item.innerHTML = `
+                <div>${message}</div>
+                <div class="timestamp">${timestamp}</div>
+            `;
+            
+            statusMessages.prepend(item);
+        }
+        
+        // Format currency
+        function formatCurrency(value, currency) {
+            const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency.toUpperCase(),
+            });
+            
+            return formatter.format(value);
+        }
+        
+        // Fetch the price of a cryptocurrency
+        async function fetchPrice() {
+            const crypto = document.getElementById('cryptoSelect').value;
+            const currency = document.getElementById('currencySelect').value;
+            const include24hChange = document.getElementById('include24hChange').checked;
+            
+            try {
+                priceResult.classList.add('d-none');
+                addStatusMessage(`Fetching price for ${crypto.toUpperCase()}...`);
+                
+                let url = `${API_BASE_URL}/crypto/price?crypto=${crypto}&currency=${currency}`;
+                if (include24hChange) {
+                    url += '&with_24h_change=true';
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Display the price
+                    let priceHtml = `
+                        <span>${data.name}</span>: 
+                        <span>${formatCurrency(data.current_price, currency)}</span>
+                    `;
+                    
+                    if (data.price_change_24h !== undefined) {
+                        const changeClass = data.price_change_24h >= 0 ? 'change-up' : 'change-down';
+                        const changeSymbol = data.price_change_24h >= 0 ? '▲' : '▼';
+                        
+                        priceHtml += `
+                            <small class="${changeClass}">
+                                ${changeSymbol} ${Math.abs(data.price_change_24h).toFixed(2)}%
+                            </small>
+                        `;
+                    }
+                    
+                    priceResult.innerHTML = priceHtml;
+                    priceResult.classList.remove('d-none');
+                    addStatusMessage(`Successfully fetched price for ${data.name}.`);
+                } else {
+                    addStatusMessage(`Error: ${data.error}`, true);
+                }
+            } catch (error) {
+                addStatusMessage(`Error: ${error.message}`, true);
+            }
+        }
+        
+        // Narrate the price of a cryptocurrency
+        async function narratePrice() {
+            const crypto = document.getElementById('cryptoSelect').value;
+            const currency = document.getElementById('currencySelect').value;
+            const include24hChange = document.getElementById('include24hChange').checked;
+            
+            try {
+                addStatusMessage(`Generating narration for ${crypto.toUpperCase()} price...`);
+                
+                const payload = {
+                    crypto: crypto,
+                    currency: currency,
+                    with_24h_change: include24hChange,
+                    return_audio: true
+                };
+                
+                // Fetch the audio directly
+                const response = await fetch(`${API_BASE_URL}/narrator/crypto`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    // Create and play the audio
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                    
+                    addStatusMessage(`Playing price narration for ${crypto.toUpperCase()}.`);
+                } else {
+                    const data = await response.json();
+                    addStatusMessage(`Error: ${data.error}`, true);
+                }
+            } catch (error) {
+                addStatusMessage(`Error: ${error.message}`, true);
+            }
+        }
+        
+        // Narrate custom text
+        async function narrateText() {
+            const text = document.getElementById('customText').value.trim();
+            const lang = document.getElementById('languageSelect').value;
+            const slow = document.getElementById('slowSpeed').checked;
+            
+            if (!text) {
+                addStatusMessage('Error: Please enter text to narrate.', true);
+                return;
+            }
+            
+            try {
+                addStatusMessage(`Generating narration for custom text...`);
+                
+                const payload = {
+                    text: text,
+                    lang: lang,
+                    slow: slow,
+                    return_audio: true
+                };
+                
+                // Fetch the audio directly
+                const response = await fetch(`${API_BASE_URL}/narrator/text`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    // Create and play the audio
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                    
+                    addStatusMessage(`Playing custom text narration.`);
+                } else {
+                    const data = await response.json();
+                    addStatusMessage(`Error: ${data.error}`, true);
+                }
+            } catch (error) {
+                addStatusMessage(`Error: ${error.message}`, true);
+            }
+        }
+        
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    serverStatus.textContent = 'Connected';
+                    serverStatus.className = 'text-success';
+                } else {
+                    serverStatus.textContent = 'Unknown Status';
+                    serverStatus.className = 'text-warning';
+                }
+            } catch (error) {
+                serverStatus.textContent = 'Disconnected';
+                serverStatus.className = 'text-danger';
+                
+                addStatusMessage(`Error connecting to server: ${error.message}`, true);
+            }
+        }
+        
+        // Event listeners
+        fetchPriceBtn.addEventListener('click', fetchPrice);
+        narratePriceBtn.addEventListener('click', narratePrice);
+        narrateTextBtn.addEventListener('click', narrateText);
+        
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServerStatus();
+            setInterval(checkServerStatus, 30000);  // Check every 30 seconds
+            
+            addStatusMessage('Application initialized.');
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

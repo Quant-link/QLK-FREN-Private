@@ -2,7 +2,7 @@ import configparser
 import logging
 import os
 import json
-from typing import Dict, Any, Optional, Set
+from typing import Dict, Any, Optional, Set, List
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,25 @@ class AppConfig:
         self.default_vs_currency = self.config.get(
             "Defaults", "VS_CURRENCY", fallback="usd"
         )
+        
+        # Default price change options
+        self.include_24h_change = self.config.getboolean(
+            "Defaults", "INCLUDE_24H_CHANGE", fallback=False
+        )
+        self.include_7d_change = self.config.getboolean(
+            "Defaults", "INCLUDE_7D_CHANGE", fallback=False
+        )
+        self.include_30d_change = self.config.getboolean(
+            "Defaults", "INCLUDE_30D_CHANGE", fallback=False
+        )
+        
+        # Default watchlist
+        watchlist_str = self.config.get(
+            "Defaults", "CRYPTO_WATCHLIST", fallback="bitcoin,ethereum,solana"
+        )
+        self.crypto_watchlist = [
+            crypto.strip().lower() for crypto in watchlist_str.split(",") if crypto.strip()
+        ]
 
         # Narrator Settings
         self.temp_audio_file = self.config.get(
@@ -86,6 +105,17 @@ class AppConfig:
         )
         self.keep_audio_on_error = self.config.getboolean(
             "Narrator", "KEEP_AUDIO_ON_ERROR", fallback=False
+        )
+        
+        # Batch Narration Settings
+        self.batch_narrate_intro = self.config.getboolean(
+            "BatchNarration", "NARRATE_INTRO", fallback=True
+        )
+        self.batch_narration_pause = self.config.getfloat(
+            "BatchNarration", "NARRATION_PAUSE", fallback=0.5
+        )
+        self.batch_max_cryptos = self.config.getint(
+            "BatchNarration", "MAX_CRYPTOS", fallback=10
         )
         
         # Cache Settings
@@ -180,7 +210,7 @@ class AppConfig:
     def _update_config_from_attributes(self):
         """Update the ConfigParser instance with the current attribute values."""
         # Ensure all required sections exist
-        for section in ["API", "Retry", "Defaults", "Narrator", "Logging", "Cache"]:
+        for section in ["API", "Retry", "Defaults", "Narrator", "Logging", "Cache", "BatchNarration"]:
             if not self.config.has_section(section):
                 self.config.add_section(section)
                 
@@ -199,6 +229,15 @@ class AppConfig:
         # Default CLI argument values
         self.config.set("Defaults", "CRYPTO_ID", str(self.default_crypto_id))
         self.config.set("Defaults", "VS_CURRENCY", str(self.default_vs_currency))
+        self.config.set("Defaults", "INCLUDE_24H_CHANGE", str(self.include_24h_change))
+        self.config.set("Defaults", "INCLUDE_7D_CHANGE", str(self.include_7d_change))
+        self.config.set("Defaults", "INCLUDE_30D_CHANGE", str(self.include_30d_change))
+        self.config.set("Defaults", "CRYPTO_WATCHLIST", ",".join(self.crypto_watchlist))
+        
+        # Batch Narration Settings
+        self.config.set("BatchNarration", "NARRATE_INTRO", str(self.batch_narrate_intro))
+        self.config.set("BatchNarration", "NARRATION_PAUSE", str(self.batch_narration_pause))
+        self.config.set("BatchNarration", "MAX_CRYPTOS", str(self.batch_max_cryptos))
         
         # Narrator Settings
         self.config.set("Narrator", "NARRATION_LANG", str(self.narration_lang))
@@ -213,6 +252,35 @@ class AppConfig:
         # Logging Settings
         self.config.set("Logging", "TEMP_AUDIO_FILE", str(self.temp_audio_file))
         self.config.set("Logging", "LOG_LEVEL", str(self.log_level))
+        
+    def get_watchlist(self, max_cryptos: Optional[int] = None) -> List[str]:
+        """
+        Get the cryptocurrency watchlist with an optional limit.
+        
+        Args:
+            max_cryptos (Optional[int]): Maximum number of cryptocurrencies to return
+            
+        Returns:
+            List[str]: List of cryptocurrency IDs
+        """
+        if max_cryptos is None:
+            max_cryptos = self.batch_max_cryptos
+            
+        # Return up to max_cryptos items
+        return self.crypto_watchlist[:max_cryptos]
+        
+    def should_include_price_changes(self) -> Dict[str, bool]:
+        """
+        Get the default settings for including price changes.
+        
+        Returns:
+            Dict[str, bool]: Dictionary with keys '24h', '7d', and '30d' and boolean values
+        """
+        return {
+            '24h': self.include_24h_change,
+            '7d': self.include_7d_change,
+            '30d': self.include_30d_change
+        }
 
 
 # Create a single instance of the config to be imported by other modules

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.narrator import narrate_price, play_audio_fallback
+from src.narrator import narrate_price, play_audio_fallback, narrate_price_with_change, narrate_multiple_prices, narrate_text
 from src.app_config import AppConfig  # For spec
 import subprocess
 
@@ -14,6 +14,12 @@ def mock_narrator_app_settings_values():
         "narration_lang": "en",
         "narration_slow": False,
         "keep_audio_on_error": False,
+        "cache_enabled": True,
+        "cache_expiration": 300,
+        "cache_max_items": 100,
+        "batch_narrate_intro": True,
+        "batch_narration_pause": 0.5,
+        "batch_max_cryptos": 10,
     }
 
 
@@ -235,7 +241,9 @@ def test_narrate_price_error_during_playsound(
 @patch("src.narrator.playsound")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
+@patch("src.narrator.tempfile.gettempdir")
 def test_narrate_price_error_during_remove(
+    mock_tempfile_gettempdir,
     mock_os_remove,
     mock_os_exists,
     mock_playsound,
@@ -244,24 +252,30 @@ def test_narrate_price_error_during_remove(
     mock_narrator_app_settings_values,
 ):
     """Test error handling if os.remove() raises OSError during cleanup."""
+    # Configure the patched app_settings instance
     for key, value in mock_narrator_app_settings_values.items():
         setattr(mock_app_settings_instance, key, value)
 
+    # Setup the temp dir mock to return a fixed path
+    mock_tempfile_gettempdir.return_value = "/tmp"
+    
+    # We'll test narrate_text directly since narrate_price uses it
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_os_exists.return_value = True
     mock_os_remove.side_effect = OSError(
         "Failed to delete file"
     )  # Simulate an OS error
+    mock_playsound.return_value = True  # Ensure playback is successful
 
     # We don't need to assert an exception from narrate_price itself, as it catches this.
     # We just check that the functions were called as expected up to the point of error.
-    narrate_price("TestCoin", 100, "USD")
+    text_to_narrate = "The current price for TestCoin is 100.00 USD."
+    narrate_text(text_to_narrate, "en", False, True, False)  # Force new to avoid caching
 
     expected_temp_file = mock_narrator_app_settings_values["temp_audio_file"]
     mock_tts_instance.save.assert_called_once_with(expected_temp_file)
     mock_playsound.assert_called_once_with(expected_temp_file)
-    # We no longer expect os.path.exists to be called
     mock_os_remove.assert_called_once_with(expected_temp_file)
 
 
@@ -271,21 +285,33 @@ def test_narrate_price_error_during_remove(
 @patch("src.narrator.playsound")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
+@patch("src.narrator.tempfile.gettempdir")
+@patch("src.narrator._generate_cache_key")
 def test_narrate_price_app_settings_none(
-    mock_os_remove, mock_os_exists, mock_playsound, mock_gtts_constructor
+    mock_generate_cache_key, 
+    mock_tempfile_gettempdir,
+    mock_os_remove, 
+    mock_os_exists, 
+    mock_playsound, 
+    mock_gtts_constructor
 ):
     """Test behavior when app_settings is None (config failed to load)."""
+    # Setup the temp dir mock to return a fixed path
+    mock_tempfile_gettempdir.return_value = "/tmp"
+    mock_generate_cache_key.return_value = "test_cache_key"
+    
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_os_exists.return_value = True
+    mock_playsound.return_value = True
 
     crypto_name = "FallbackCoin"
     price = 50
     currency = "CAD"
     expected_text = f"The current price for {crypto_name} is {price:,.2f} {currency}."
 
-    # These are the hardcoded defaults in narrator.py when app_settings is None
-    expected_temp_file = "temp_price_narration.mp3"  # Define expected_temp_file
+    # We'll test with the default temp file instead
+    expected_temp_file = "/tmp/narration_test_cac.mp3"
     default_lang = "en"
     default_slow = False
 
@@ -296,10 +322,11 @@ def test_narrate_price_app_settings_none(
         lang=default_lang,
         slow=default_slow
     )
-    mock_tts_instance.save.assert_called_once_with(expected_temp_file)
-    mock_playsound.assert_called_once_with(expected_temp_file)
-    # We no longer expect os.path.exists to be called
-    mock_os_remove.assert_called_once_with(expected_temp_file)
+    # Check that the save call contains the temp directory path
+    assert "/tmp/narration_" in mock_tts_instance.save.call_args[0][0]
+    # Check that playsound is called with the same path
+    assert mock_playsound.call_args[0][0] == mock_tts_instance.save.call_args[0][0]
+    # We no longer expect os.remove to be called since we're using the tempfile which is cached
 
 
 @patch("platform.system")
@@ -442,3 +469,335 @@ def test_play_audio_fallback_exception(mock_subprocess_run, mock_platform_system
     assert result is False
     mock_platform_system.assert_called_once()
     mock_subprocess_run.assert_called_once()
+
+
+# Tests for narrate_price_with_change function
+
+@patch("src.narrator.narrate_text")
+def test_narrate_price_with_change_basic(mock_narrate_text):
+    """Test narrating price with 24-hour change."""
+    # Mock the narrate_text function to return True (successful narration)
+    mock_narrate_text.return_value = True
+    
+    # Test data with 24h change
+    crypto_data = {
+        "name": "Bitcoin",
+        "current_price": 60000.75,
+        "price_change_24h": 5.25,
+        "currency": "USD",
+        "success": True
+    }
+    
+    result = narrate_price_with_change(
+        crypto_data, 
+        include_24h=True, 
+        include_7d=False, 
+        include_30d=False
+    )
+    
+    assert result is True
+    mock_narrate_text.assert_called_once()
+    
+    # Check that the narration text contains the price and 24h change
+    narration_text = mock_narrate_text.call_args[0][0]
+    assert "Bitcoin" in narration_text
+    assert "60,000.75 USD" in narration_text
+    assert "up 5.25 percent in the last 24 hours" in narration_text
+
+
+@patch("src.narrator.narrate_text")
+def test_narrate_price_with_change_negative_change(mock_narrate_text):
+    """Test narrating price with negative price change."""
+    mock_narrate_text.return_value = True
+    
+    # Test data with negative 24h change
+    crypto_data = {
+        "name": "Ethereum",
+        "current_price": 3000.50,
+        "price_change_24h": -2.10,
+        "currency": "USD",
+        "success": True
+    }
+    
+    result = narrate_price_with_change(
+        crypto_data,
+        include_24h=True
+    )
+    
+    assert result is True
+    mock_narrate_text.assert_called_once()
+    
+    # Check that the narration text reflects the negative change
+    narration_text = mock_narrate_text.call_args[0][0]
+    assert "Ethereum" in narration_text
+    assert "3,000.50 USD" in narration_text
+    assert "down 2.10 percent in the last 24 hours" in narration_text
+
+
+@patch("src.narrator.narrate_text")
+def test_narrate_price_with_change_multiple_periods(mock_narrate_text):
+    """Test narrating price with multiple time period changes."""
+    mock_narrate_text.return_value = True
+    
+    # Test data with 24h, 7d, and 30d changes
+    crypto_data = {
+        "name": "Bitcoin",
+        "current_price": 60000.75,
+        "price_change_24h": 5.25,
+        "price_change_7d": 10.5,
+        "price_change_30d": -8.75,
+        "currency": "USD",
+        "success": True
+    }
+    
+    result = narrate_price_with_change(
+        crypto_data,
+        include_24h=True,
+        include_7d=True,
+        include_30d=True
+    )
+    
+    assert result is True
+    mock_narrate_text.assert_called_once()
+    
+    # Check that the narration text includes all time periods
+    narration_text = mock_narrate_text.call_args[0][0]
+    assert "up 5.25 percent in the last 24 hours" in narration_text
+    assert "up 10.50 percent" in narration_text and "past 7 days" in narration_text
+    assert "down 8.75 percent" in narration_text and "last 30 days" in narration_text
+
+
+@patch("src.narrator.narrate_text")
+def test_narrate_price_with_change_invalid_data(mock_narrate_text):
+    """Test narrating price with invalid data."""
+    # Test data with missing current_price
+    crypto_data = {
+        "name": "InvalidCoin",
+        "currency": "USD",
+        "success": False
+    }
+    
+    result = narrate_price_with_change(crypto_data)
+    
+    assert result is False
+    mock_narrate_text.assert_not_called()
+
+
+# Tests for narrate_multiple_prices function
+
+@patch("src.narrator.time.sleep")
+@patch("src.narrator.narrate_text")
+@patch("src.narrator.narrate_price_with_change")
+@patch("src.narrator.narrate_price")
+def test_narrate_multiple_prices_basic(
+    mock_narrate_price, 
+    mock_narrate_price_with_change, 
+    mock_narrate_text,
+    mock_sleep
+):
+    """Test narrating multiple prices without changes."""
+    # Make all narration functions return True
+    mock_narrate_price.return_value = True
+    mock_narrate_price_with_change.return_value = True
+    mock_narrate_text.return_value = True
+
+    # Test data for multiple cryptocurrencies
+    crypto_data_list = [
+        {
+            "name": "Bitcoin",
+            "current_price": 60000.75,
+            "currency": "USD",
+            "success": True
+        },
+        {
+            "name": "Ethereum",
+            "current_price": 3000.50,
+            "currency": "USD",
+            "success": True
+        }
+    ]
+
+    result = narrate_multiple_prices(
+        crypto_data_list,
+        include_changes=False,
+        narrate_intro=True
+    )
+
+    assert result == 2  # Should successfully narrate both cryptocurrencies
+
+    # Check that intro and conclusion were narrated
+    assert mock_narrate_text.call_count == 2
+    # First call should be the intro
+    assert "Here are the current prices for 2 cryptocurrencies" in mock_narrate_text.call_args_list[0][0][0]
+    # Last call should be the conclusion
+    assert "That concludes the cryptocurrency price update" in mock_narrate_text.call_args_list[1][0][0]
+
+    # Check that each cryptocurrency was narrated with the correct function
+    assert mock_narrate_price.call_count == 2
+    mock_narrate_price.assert_any_call("Bitcoin", 60000.75, "USD", lang="en", slow=False, force_new=False)
+    mock_narrate_price.assert_any_call("Ethereum", 3000.50, "USD", lang="en", slow=False, force_new=False)
+    
+    # Check that narrate_price_with_change was not called since include_changes was False
+    mock_narrate_price_with_change.assert_not_called()
+
+
+@patch("src.narrator.time.sleep")
+@patch("src.narrator.narrate_text")
+@patch("src.narrator.narrate_price_with_change")
+@patch("src.narrator.narrate_price")
+def test_narrate_multiple_prices_with_changes(
+    mock_narrate_price, 
+    mock_narrate_price_with_change, 
+    mock_narrate_text,
+    mock_sleep
+):
+    """Test narrating multiple prices with changes."""
+    # Make all narration functions return True
+    mock_narrate_price.return_value = True
+    mock_narrate_price_with_change.return_value = True
+    mock_narrate_text.return_value = True
+
+    # Test data for multiple cryptocurrencies with price changes
+    crypto_data_list = [
+        {
+            "name": "Bitcoin",
+            "current_price": 60000.75,
+            "price_change_24h": 5.25,
+            "currency": "USD",
+            "success": True
+        },
+        {
+            "name": "Ethereum",
+            "current_price": 3000.50,
+            "price_change_24h": -2.10,
+            "currency": "USD",
+            "success": True
+        }
+    ]
+
+    result = narrate_multiple_prices(
+        crypto_data_list,
+        include_changes=True,
+        narrate_intro=True
+    )
+
+    assert result == 2  # Should successfully narrate both cryptocurrencies
+
+    # Check that intro and conclusion were narrated
+    assert mock_narrate_text.call_count == 2
+    # First call should be the intro
+    assert "Here are the current prices for 2 cryptocurrencies" in mock_narrate_text.call_args_list[0][0][0]
+    # Last call should be the conclusion
+    assert "That concludes the cryptocurrency price update" in mock_narrate_text.call_args_list[1][0][0]
+
+    # Check that narrate_price was not called since we're using narrate_price_with_change
+    mock_narrate_price.assert_not_called()
+    
+    # Check that each cryptocurrency was narrated with changes
+    assert mock_narrate_price_with_change.call_count == 2
+    # Verify both calls to narrate_price_with_change with the right arguments
+    mock_narrate_price_with_change.assert_any_call(
+        crypto_data_list[0], include_24h=True, include_7d=False, include_30d=False,
+        lang="en", slow=False, force_new=False
+    )
+    mock_narrate_price_with_change.assert_any_call(
+        crypto_data_list[1], include_24h=True, include_7d=False, include_30d=False,
+        lang="en", slow=False, force_new=False
+    )
+
+
+@patch("src.narrator.time.sleep")
+@patch("src.narrator.narrate_text")
+@patch("src.narrator.narrate_price_with_change")
+@patch("src.narrator.narrate_price")
+def test_narrate_multiple_prices_partial_failure(
+    mock_narrate_price, 
+    mock_narrate_price_with_change, 
+    mock_narrate_text,
+    mock_sleep
+):
+    """Test narrating multiple prices where some fail."""
+    # First call succeeds, second call fails
+    mock_narrate_price.side_effect = [True, False]
+    mock_narrate_text.return_value = True
+    
+    crypto_data_list = [
+        {
+            "name": "Bitcoin",
+            "current_price": 60000.75,
+            "currency": "USD",
+            "success": True
+        },
+        {
+            "name": "Ethereum",
+            "current_price": 3000.50,
+            "currency": "USD",
+            "success": True
+        }
+    ]
+    
+    result = narrate_multiple_prices(
+        crypto_data_list,
+        include_changes=False,
+        narrate_intro=True
+    )
+    
+    assert result == 1  # Only one crypto narration succeeded
+    
+    # Check that each crypto was attempted
+    assert mock_narrate_price.call_count == 2
+    assert mock_narrate_price_with_change.call_count == 0
+    
+    # Check that the conclusion wasn't narrated (only one crypto succeeded)
+    assert mock_narrate_text.call_count == 1  # Only intro was narrated
+
+
+@patch("src.narrator.narrate_text")
+@patch("src.narrator.narrate_price")
+def test_narrate_multiple_prices_empty_list(mock_narrate_price, mock_narrate_text):
+    """Test narrating an empty list of cryptocurrencies."""
+    mock_narrate_price.return_value = True
+    mock_narrate_text.return_value = True
+    
+    result = narrate_multiple_prices(
+        [],
+        include_changes=False,
+        narrate_intro=True
+    )
+    
+    assert result == 0  # No cryptocurrencies narrated
+    mock_narrate_price.assert_not_called()
+    mock_narrate_text.assert_not_called()
+
+
+@patch("src.narrator.narrate_text")
+@patch("src.narrator.narrate_price")
+def test_narrate_multiple_prices_invalid_data(mock_narrate_price, mock_narrate_text):
+    """Test handling invalid cryptocurrency data in the list."""
+    mock_narrate_price.return_value = True
+    mock_narrate_text.return_value = True
+    
+    # List contains one valid and one invalid crypto
+    crypto_data_list = [
+        {
+            "name": "Bitcoin",
+            "current_price": 60000.75,
+            "currency": "USD",
+            "success": True
+        },
+        {
+            "name": "InvalidCoin",
+            "currency": "USD",
+            "success": False
+        }
+    ]
+    
+    result = narrate_multiple_prices(
+        crypto_data_list,
+        include_changes=False,
+        narrate_intro=True
+    )
+    
+    assert result == 1  # Only one valid crypto
+    assert mock_narrate_price.call_count == 1
+    assert mock_narrate_text.call_count == 1  # Only intro was narrated (single success)

@@ -4,11 +4,47 @@ from unittest.mock import (
     MagicMock,
 )  # pytest-mock provides the mocker fixture, but unittest.mock is often used directly too
 import requests
-from src.price_fetcher import get_crypto_price
+from src.price_fetcher import get_crypto_price, get_crypto_price_with_change, get_multiple_crypto_prices
 from src.app_config import AppConfig  # To allow testing with mocked app_settings
 
 # Sample successful API response
 SUCCESSFUL_RESPONSE_DATA = {"bitcoin": {"usd": 60000.75}}
+
+# Sample successful response with 24h change
+SUCCESSFUL_RESPONSE_WITH_CHANGE = {
+    "bitcoin": {
+        "usd": 60000.75,
+        "usd_24h_change": 5.25
+    }
+}
+
+# Sample successful multiple crypto response
+SUCCESSFUL_MULTIPLE_RESPONSE = {
+    "bitcoin": {
+        "usd": 60000.75,
+        "usd_24h_change": 5.25
+    },
+    "ethereum": {
+        "usd": 3000.50,
+        "usd_24h_change": -2.10
+    }
+}
+
+# Sample market data response (used for 7d and 30d changes)
+SUCCESSFUL_MARKET_DATA_RESPONSE = {
+    "id": "bitcoin",
+    "name": "Bitcoin",
+    "market_data": {
+        "current_price": {
+            "usd": 60000.75
+        },
+        "price_change_percentage": {
+            "24h": 5.25,
+            "7d": 10.5,
+            "30d": 15.75
+        }
+    }
+}
 
 # Sample error response (e.g., currency not found for id)
 ERROR_RESPONSE_DATA_NO_CURRENCY = {"bitcoin": {}}
@@ -334,3 +370,201 @@ def test_get_crypto_price_app_settings_none(mock_requests_get):
         params={"ids": "bitcoin", "vs_currencies": "usd"},
         timeout=10,  # Fallback timeout
     )
+
+
+# Tests for get_crypto_price_with_change function
+
+@patch("src.price_fetcher.app_settings", spec=AppConfig)
+@patch("requests.get")
+def test_get_crypto_price_with_change_basic(
+    mock_requests_get, mock_app_settings_instance, mock_app_settings_values
+):
+    """Test fetching price with 24h change."""
+    # Configure the patched app_settings instance
+    for key, value in mock_app_settings_values.items():
+        setattr(mock_app_settings_instance, key, value)
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = SUCCESSFUL_RESPONSE_WITH_CHANGE
+    mock_response.status_code = 200
+    mock_requests_get.return_value = mock_response
+
+    result = get_crypto_price_with_change("bitcoin", "usd", include_24h=True)
+
+    assert result["name"] == "Bitcoin"
+    assert result["current_price"] == 60000.75
+    assert result["price_change_24h"] == 5.25
+    assert result["currency"] == "USD"
+    assert result["success"] is True
+
+    # Verify the API call had the correct parameters
+    mock_requests_get.assert_called_once()
+    call_args = mock_requests_get.call_args[1]
+    assert call_args["params"]["include_24hr_change"] == "true"
+
+
+@patch("src.price_fetcher.app_settings", spec=AppConfig)
+@patch("requests.get")
+def test_get_crypto_price_with_change_7d_and_30d(
+    mock_requests_get, mock_app_settings_instance, mock_app_settings_values
+):
+    """Test fetching price with 24h, 7d, and 30d changes (requires two API calls)."""
+    # Configure the patched app_settings instance
+    for key, value in mock_app_settings_values.items():
+        setattr(mock_app_settings_instance, key, value)
+
+    # First response for basic price data
+    mock_response1 = MagicMock()
+    mock_response1.json.return_value = SUCCESSFUL_RESPONSE_WITH_CHANGE
+    mock_response1.status_code = 200
+
+    # Second response for market data (7d and 30d changes)
+    mock_response2 = MagicMock()
+    mock_response2.json.return_value = SUCCESSFUL_MARKET_DATA_RESPONSE
+    mock_response2.status_code = 200
+
+    mock_requests_get.side_effect = [mock_response1, mock_response2]
+
+    result = get_crypto_price_with_change(
+        "bitcoin", "usd", include_24h=True, include_7d=True, include_30d=True
+    )
+
+    assert result["name"] == "Bitcoin"
+    assert result["current_price"] == 60000.75
+    assert result["price_change_24h"] == 5.25
+    assert result["price_change_7d"] == 10.5
+    assert result["price_change_30d"] == 15.75
+    assert result["currency"] == "USD"
+    assert result["success"] is True
+
+    # Verify two API calls were made
+    assert mock_requests_get.call_count == 2
+    
+    # First call should be to the price endpoint
+    first_call_args = mock_requests_get.call_args_list[0][1]
+    assert "simple/price" in mock_app_settings_values["coingecko_api_url"]
+    assert first_call_args["params"]["include_24hr_change"] == "true"
+    
+    # Second call should be to the coins endpoint
+    second_call_args = mock_requests_get.call_args_list[1][0][0]  # Access the first positional argument
+    assert "coins/bitcoin" in second_call_args
+    second_call_params = mock_requests_get.call_args_list[1][1]["params"]
+    assert second_call_params["market_data"] == "true"
+
+
+@patch("src.price_fetcher.app_settings", spec=AppConfig)
+@patch("requests.get")
+def test_get_crypto_price_with_change_error_handling(
+    mock_requests_get, mock_app_settings_instance, mock_app_settings_values
+):
+    """Test error handling in price with change fetching."""
+    # Configure the patched app_settings instance
+    for key, value in mock_app_settings_values.items():
+        setattr(mock_app_settings_instance, key, value)
+
+    # Simulate a failed API response
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        "Not Found"
+    )
+    mock_response.text = "Not Found Text"
+    mock_requests_get.return_value = mock_response
+
+    result = get_crypto_price_with_change("bitcoin", "usd", include_24h=True)
+
+    # The function should still return a result object, but with success=False
+    assert result["name"] == "Bitcoin"
+    assert result["current_price"] is None
+    assert result["price_change_24h"] is None
+    assert result["currency"] == "USD"
+    assert result["success"] is False
+
+
+# Tests for get_multiple_crypto_prices function
+
+@patch("src.price_fetcher.app_settings", spec=AppConfig)
+@patch("requests.get")
+def test_get_multiple_crypto_prices_success(
+    mock_requests_get, mock_app_settings_instance, mock_app_settings_values
+):
+    """Test successful fetching of multiple cryptocurrency prices."""
+    # Configure the patched app_settings instance
+    for key, value in mock_app_settings_values.items():
+        setattr(mock_app_settings_instance, key, value)
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = SUCCESSFUL_MULTIPLE_RESPONSE
+    mock_response.status_code = 200
+    mock_requests_get.return_value = mock_response
+
+    result = get_multiple_crypto_prices(["bitcoin", "ethereum"], "usd", include_change=True)
+
+    assert len(result) == 2
+    assert "bitcoin" in result
+    assert "ethereum" in result
+    
+    # Check bitcoin data
+    assert result["bitcoin"]["name"] == "Bitcoin"
+    assert result["bitcoin"]["current_price"] == 60000.75
+    assert result["bitcoin"]["price_change_24h"] == 5.25
+    assert result["bitcoin"]["success"] is True
+    
+    # Check ethereum data
+    assert result["ethereum"]["name"] == "Ethereum"
+    assert result["ethereum"]["current_price"] == 3000.50
+    assert result["ethereum"]["price_change_24h"] == -2.10
+    assert result["ethereum"]["success"] is True
+
+    # Verify the API call
+    mock_requests_get.assert_called_once()
+    call_args = mock_requests_get.call_args[1]
+    assert call_args["params"]["ids"] == "bitcoin,ethereum"
+    assert call_args["params"]["include_24hr_change"] == "true"
+
+
+@patch("src.price_fetcher.app_settings", spec=AppConfig)
+@patch("requests.get")
+def test_get_multiple_crypto_prices_partial_success(
+    mock_requests_get, mock_app_settings_instance, mock_app_settings_values
+):
+    """Test partially successful fetching of multiple cryptocurrency prices."""
+    # Configure the patched app_settings instance
+    for key, value in mock_app_settings_values.items():
+        setattr(mock_app_settings_instance, key, value)
+
+    # Only bitcoin data is returned, not litecoin
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"bitcoin": {"usd": 60000.75}}
+    mock_response.status_code = 200
+    mock_requests_get.return_value = mock_response
+
+    result = get_multiple_crypto_prices(["bitcoin", "litecoin"], "usd")
+
+    assert len(result) == 2  # Both requested cryptos should be in the result
+    
+    # Bitcoin should be successful
+    assert result["bitcoin"]["name"] == "Bitcoin"
+    assert result["bitcoin"]["current_price"] == 60000.75
+    assert result["bitcoin"]["success"] is True
+    
+    # Litecoin should be in the result but with success=False
+    assert result["litecoin"]["name"] == "Litecoin"
+    assert result["litecoin"]["current_price"] is None
+    assert result["litecoin"]["success"] is False
+
+
+@patch("src.price_fetcher.app_settings", spec=AppConfig)
+@patch("requests.get")
+def test_get_multiple_crypto_prices_empty_list(
+    mock_requests_get, mock_app_settings_instance, mock_app_settings_values
+):
+    """Test behavior when an empty list of cryptos is provided."""
+    # Configure the patched app_settings instance
+    for key, value in mock_app_settings_values.items():
+        setattr(mock_app_settings_instance, key, value)
+
+    result = get_multiple_crypto_prices([], "usd")
+
+    assert result == {}  # Should return an empty dictionary
+    mock_requests_get.assert_not_called()  # No API call should be made
