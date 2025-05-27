@@ -58,6 +58,43 @@
             font-size: 0.8rem;
             color: #6c757d;
         }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .audio-controls {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .audio-controls audio {
+            width: 100%;
+            max-width: 400px;
+        }
+        .price-change-options {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .crypto-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -75,9 +112,18 @@
                         Cryptocurrency Price Narrator
                     </div>
                     <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="batchMode">
+                                <label class="form-check-label" for="batchMode">
+                                    <strong>Batch Mode</strong> - Narrate multiple cryptocurrencies
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="mb-3">
+                                <div class="mb-3" id="singleCryptoSelect">
                                     <label for="cryptoSelect" class="form-label">Select Cryptocurrency</label>
                                     <select class="form-select" id="cryptoSelect">
                                         <option value="bitcoin">Bitcoin (BTC)</option>
@@ -87,7 +133,32 @@
                                         <option value="xrp">XRP</option>
                                         <option value="dogecoin">Dogecoin (DOGE)</option>
                                         <option value="shiba-inu">Shiba Inu (SHIB)</option>
+                                        <option value="chainlink">Chainlink (LINK)</option>
+                                        <option value="polygon">Polygon (MATIC)</option>
+                                        <option value="avalanche-2">Avalanche (AVAX)</option>
+                                        <option value="polkadot">Polkadot (DOT)</option>
+                                        <option value="litecoin">Litecoin (LTC)</option>
+                                        <option value="bitcoin-cash">Bitcoin Cash (BCH)</option>
+                                        <option value="stellar">Stellar (XLM)</option>
+                                        <option value="cosmos">Cosmos (ATOM)</option>
                                     </select>
+                                </div>
+
+                                <div class="mb-3 d-none" id="multipleCryptoSelect">
+                                    <label for="cryptoMultiSelect" class="form-label">Select Multiple Cryptocurrencies</label>
+                                    <select class="form-select" id="cryptoMultiSelect" multiple size="6">
+                                        <option value="bitcoin">Bitcoin (BTC)</option>
+                                        <option value="ethereum">Ethereum (ETH)</option>
+                                        <option value="solana">Solana (SOL)</option>
+                                        <option value="cardano">Cardano (ADA)</option>
+                                        <option value="xrp">XRP</option>
+                                        <option value="dogecoin">Dogecoin (DOGE)</option>
+                                        <option value="chainlink">Chainlink (LINK)</option>
+                                        <option value="polygon">Polygon (MATIC)</option>
+                                        <option value="avalanche-2">Avalanche (AVAX)</option>
+                                        <option value="polkadot">Polkadot (DOT)</option>
+                                    </select>
+                                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple items</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -105,18 +176,45 @@
                             </div>
                         </div>
 
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="include24hChange" checked>
-                            <label class="form-check-label" for="include24hChange">
-                                Include 24h price change
-                            </label>
+                        <div class="price-change-options">
+                            <h6 class="mb-3">Price Change Options</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="include24hChange" checked>
+                                <label class="form-check-label" for="include24hChange">
+                                    Include 24h price change
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="include7dChange">
+                                <label class="form-check-label" for="include7dChange">
+                                    Include 7d price change
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include30dChange">
+                                <label class="form-check-label" for="include30dChange">
+                                    Include 30d price change
+                                </label>
+                            </div>
                         </div>
 
                         <div id="priceResult" class="price-display d-none"></div>
 
+                        <div id="audioControls" class="audio-controls d-none">
+                            <audio controls id="audioPlayer">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button class="btn btn-secondary me-md-2" type="button" id="fetchPriceBtn">Fetch Price</button>
-                            <button class="btn btn-primary" type="button" id="narratePriceBtn">Narrate Price</button>
+                            <button class="btn btn-secondary me-md-2" type="button" id="fetchPriceBtn">
+                                <span id="fetchPriceSpinner" class="loading-spinner d-none"></span>
+                                Fetch Price
+                            </button>
+                            <button class="btn btn-primary" type="button" id="narratePriceBtn">
+                                <span id="narratePriceSpinner" class="loading-spinner d-none"></span>
+                                Narrate Price
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -129,6 +227,14 @@
                         <div class="mb-3">
                             <label for="customText" class="form-label">Enter Text to Narrate</label>
                             <textarea class="form-control" id="customText" placeholder="Enter text to be narrated..."></textarea>
+                            <div class="mt-2">
+                                <small class="text-muted">Quick examples:</small>
+                                <div class="mt-1">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="document.getElementById('customText').value='Welcome to QuantLink FREN, your AI-powered cryptocurrency narrator!'">Demo Text 1</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="document.getElementById('customText').value='The cryptocurrency market is experiencing significant volatility today with major movements across all sectors.'">Demo Text 2</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('customText').value='Thank you for using QuantLink FREN. Stay informed, stay ahead!'">Demo Text 3</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="row mb-3">
@@ -156,7 +262,16 @@
                         </div>
 
                         <div class="d-grid">
-                            <button class="btn btn-primary" type="button" id="narrateTextBtn">Narrate Text</button>
+                            <button class="btn btn-primary" type="button" id="narrateTextBtn">
+                                <span id="narrateTextSpinner" class="loading-spinner d-none"></span>
+                                Narrate Text
+                            </button>
+                        </div>
+
+                        <div id="textAudioControls" class="audio-controls d-none">
+                            <audio controls id="textAudioPlayer">
+                                Your browser does not support the audio element.
+                            </audio>
                         </div>
                     </div>
                 </div>
@@ -193,7 +308,7 @@
     <script>
         // Configuration
         const API_BASE_URL = 'http://localhost:5001/api';
-        
+
         // DOM elements
         const fetchPriceBtn = document.getElementById('fetchPriceBtn');
         const narratePriceBtn = document.getElementById('narratePriceBtn');
@@ -201,69 +316,149 @@
         const priceResult = document.getElementById('priceResult');
         const statusMessages = document.getElementById('statusMessages');
         const serverStatus = document.getElementById('serverStatus');
-        
+        const audioControls = document.getElementById('audioControls');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const textAudioControls = document.getElementById('textAudioControls');
+        const textAudioPlayer = document.getElementById('textAudioPlayer');
+
+        // Spinner elements
+        const fetchPriceSpinner = document.getElementById('fetchPriceSpinner');
+        const narratePriceSpinner = document.getElementById('narratePriceSpinner');
+        const narrateTextSpinner = document.getElementById('narrateTextSpinner');
+
+        // Batch mode elements
+        const batchModeToggle = document.getElementById('batchMode');
+        const singleCryptoSelect = document.getElementById('singleCryptoSelect');
+        const multipleCryptoSelect = document.getElementById('multipleCryptoSelect');
+        const cryptoMultiSelect = document.getElementById('cryptoMultiSelect');
+
         // Add a status message
         function addStatusMessage(message, isError = false) {
             const now = new Date();
             const timestamp = now.toLocaleTimeString();
-            
+
             const item = document.createElement('div');
             item.className = `list-group-item ${isError ? 'list-group-item-danger' : 'list-group-item-info'}`;
-            
+
             item.innerHTML = `
                 <div>${message}</div>
                 <div class="timestamp">${timestamp}</div>
             `;
-            
+
             statusMessages.prepend(item);
         }
-        
+
         // Format currency
         function formatCurrency(value, currency) {
             const formatter = new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: currency.toUpperCase(),
             });
-            
+
             return formatter.format(value);
         }
-        
+
+        // Show/hide loading spinner
+        function setLoading(button, spinner, isLoading) {
+            if (isLoading) {
+                button.disabled = true;
+                spinner.classList.remove('d-none');
+            } else {
+                button.disabled = false;
+                spinner.classList.add('d-none');
+            }
+        }
+
+        // Toggle batch mode
+        function toggleBatchMode() {
+            const isBatchMode = batchModeToggle.checked;
+
+            if (isBatchMode) {
+                singleCryptoSelect.classList.add('d-none');
+                multipleCryptoSelect.classList.remove('d-none');
+            } else {
+                singleCryptoSelect.classList.remove('d-none');
+                multipleCryptoSelect.classList.add('d-none');
+            }
+        }
+
         // Fetch the price of a cryptocurrency
         async function fetchPrice() {
-            const crypto = document.getElementById('cryptoSelect').value;
+            const isBatchMode = batchModeToggle.checked;
             const currency = document.getElementById('currencySelect').value;
             const include24hChange = document.getElementById('include24hChange').checked;
-            
+            const include7dChange = document.getElementById('include7dChange').checked;
+            const include30dChange = document.getElementById('include30dChange').checked;
+
+            if (isBatchMode) {
+                return await fetchMultiplePrices();
+            }
+
+            const crypto = document.getElementById('cryptoSelect').value;
+
             try {
+                setLoading(fetchPriceBtn, fetchPriceSpinner, true);
                 priceResult.classList.add('d-none');
+                audioControls.classList.add('d-none');
                 addStatusMessage(`Fetching price for ${crypto.toUpperCase()}...`);
-                
+
                 let url = `${API_BASE_URL}/crypto/price?crypto=${crypto}&currency=${currency}`;
                 if (include24hChange) {
                     url += '&with_24h_change=true';
                 }
-                
+                if (include7dChange) {
+                    url += '&with_7d_change=true';
+                }
+                if (include30dChange) {
+                    url += '&with_30d_change=true';
+                }
+
                 const response = await fetch(url);
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // Display the price
                     let priceHtml = `
-                        <span>${data.name}</span>: 
+                        <span>${data.name}</span>:
                         <span>${formatCurrency(data.current_price, currency)}</span>
                     `;
-                    
+
+                    // Add 24h change if available
                     if (data.price_change_24h !== undefined) {
                         const changeClass = data.price_change_24h >= 0 ? 'change-up' : 'change-down';
                         const changeSymbol = data.price_change_24h >= 0 ? '▲' : '▼';
-                        
+
                         priceHtml += `
                             <small class="${changeClass}">
-                                ${changeSymbol} ${Math.abs(data.price_change_24h).toFixed(2)}%
+                                ${changeSymbol} ${Math.abs(data.price_change_24h).toFixed(2)}% (24h)
                             </small>
                         `;
                     }
-                    
+
+                    // Add 7d change if available
+                    if (data.price_change_7d !== undefined) {
+                        const changeClass = data.price_change_7d >= 0 ? 'change-up' : 'change-down';
+                        const changeSymbol = data.price_change_7d >= 0 ? '▲' : '▼';
+
+                        priceHtml += `
+                            <br><small class="${changeClass}">
+                                ${changeSymbol} ${Math.abs(data.price_change_7d).toFixed(2)}% (7d)
+                            </small>
+                        `;
+                    }
+
+                    // Add 30d change if available
+                    if (data.price_change_30d !== undefined) {
+                        const changeClass = data.price_change_30d >= 0 ? 'change-up' : 'change-down';
+                        const changeSymbol = data.price_change_30d >= 0 ? '▲' : '▼';
+
+                        priceHtml += `
+                            <br><small class="${changeClass}">
+                                ${changeSymbol} ${Math.abs(data.price_change_30d).toFixed(2)}% (30d)
+                            </small>
+                        `;
+                    }
+
                     priceResult.innerHTML = priceHtml;
                     priceResult.classList.remove('d-none');
                     addStatusMessage(`Successfully fetched price for ${data.name}.`);
@@ -272,25 +467,116 @@
                 }
             } catch (error) {
                 addStatusMessage(`Error: ${error.message}`, true);
+            } finally {
+                setLoading(fetchPriceBtn, fetchPriceSpinner, false);
             }
         }
-        
-        // Narrate the price of a cryptocurrency
-        async function narratePrice() {
-            const crypto = document.getElementById('cryptoSelect').value;
+
+        // Fetch multiple cryptocurrency prices
+        async function fetchMultiplePrices() {
+            const selectedOptions = Array.from(cryptoMultiSelect.selectedOptions);
             const currency = document.getElementById('currencySelect').value;
             const include24hChange = document.getElementById('include24hChange').checked;
-            
+
+            if (selectedOptions.length === 0) {
+                addStatusMessage('Error: Please select at least one cryptocurrency.', true);
+                return;
+            }
+
+            const cryptoIds = selectedOptions.map(option => option.value);
+
             try {
+                setLoading(fetchPriceBtn, fetchPriceSpinner, true);
+                priceResult.classList.add('d-none');
+                audioControls.classList.add('d-none');
+                addStatusMessage(`Fetching prices for ${cryptoIds.length} cryptocurrencies...`);
+
+                let url = `${API_BASE_URL}/crypto/prices?cryptos=${cryptoIds.join(',')}&currency=${currency}`;
+                if (include24hChange) {
+                    url += '&with_24h_change=true';
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    let priceHtml = '<div class="row">';
+
+                    Object.entries(data.prices).forEach(([cryptoId, priceData]) => {
+                        if (priceData.success) {
+                            let itemHtml = `
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">${priceData.name}</h6>
+                                            <p class="card-text">
+                                                <strong>${formatCurrency(priceData.current_price, currency)}</strong>
+                            `;
+
+                            if (priceData.price_change_24h !== undefined) {
+                                const changeClass = priceData.price_change_24h >= 0 ? 'change-up' : 'change-down';
+                                const changeSymbol = priceData.price_change_24h >= 0 ? '▲' : '▼';
+
+                                itemHtml += `
+                                    <br><small class="${changeClass}">
+                                        ${changeSymbol} ${Math.abs(priceData.price_change_24h).toFixed(2)}% (24h)
+                                    </small>
+                                `;
+                            }
+
+                            itemHtml += `
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                            priceHtml += itemHtml;
+                        }
+                    });
+
+                    priceHtml += '</div>';
+                    priceResult.innerHTML = priceHtml;
+                    priceResult.classList.remove('d-none');
+                    addStatusMessage(`Successfully fetched prices for ${Object.keys(data.prices).length} cryptocurrencies.`);
+                } else {
+                    addStatusMessage(`Error: ${data.error}`, true);
+                }
+            } catch (error) {
+                addStatusMessage(`Error: ${error.message}`, true);
+            } finally {
+                setLoading(fetchPriceBtn, fetchPriceSpinner, false);
+            }
+        }
+
+        // Narrate the price of a cryptocurrency
+        async function narratePrice() {
+            const isBatchMode = batchModeToggle.checked;
+            const currency = document.getElementById('currencySelect').value;
+            const include24hChange = document.getElementById('include24hChange').checked;
+            const include7dChange = document.getElementById('include7dChange').checked;
+            const include30dChange = document.getElementById('include30dChange').checked;
+
+            if (isBatchMode) {
+                return await narrateMultiplePrices();
+            }
+
+            const crypto = document.getElementById('cryptoSelect').value;
+
+            try {
+                setLoading(narratePriceBtn, narratePriceSpinner, true);
+                audioControls.classList.add('d-none');
                 addStatusMessage(`Generating narration for ${crypto.toUpperCase()} price...`);
-                
+
                 const payload = {
                     crypto: crypto,
                     currency: currency,
                     with_24h_change: include24hChange,
+                    with_7d_change: include7dChange,
+                    with_30d_change: include30dChange,
                     return_audio: true
                 };
-                
+
                 // Fetch the audio directly
                 const response = await fetch(`${API_BASE_URL}/narrator/crypto`, {
                     method: 'POST',
@@ -299,15 +585,18 @@
                     },
                     body: JSON.stringify(payload)
                 });
-                
+
                 if (response.ok) {
                     const blob = await response.blob();
                     const audioUrl = URL.createObjectURL(blob);
-                    
-                    // Create and play the audio
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                    
+
+                    // Set up audio player
+                    audioPlayer.src = audioUrl;
+                    audioControls.classList.remove('d-none');
+
+                    // Auto-play the audio
+                    audioPlayer.play();
+
                     addStatusMessage(`Playing price narration for ${crypto.toUpperCase()}.`);
                 } else {
                     const data = await response.json();
@@ -315,30 +604,125 @@
                 }
             } catch (error) {
                 addStatusMessage(`Error: ${error.message}`, true);
+            } finally {
+                setLoading(narratePriceBtn, narratePriceSpinner, false);
             }
         }
-        
+
+        // Narrate multiple cryptocurrency prices
+        async function narrateMultiplePrices() {
+            const selectedOptions = Array.from(cryptoMultiSelect.selectedOptions);
+            const currency = document.getElementById('currencySelect').value;
+            const include24hChange = document.getElementById('include24hChange').checked;
+
+            if (selectedOptions.length === 0) {
+                addStatusMessage('Error: Please select at least one cryptocurrency.', true);
+                return;
+            }
+
+            const cryptoIds = selectedOptions.map(option => option.value);
+
+            try {
+                setLoading(narratePriceBtn, narratePriceSpinner, true);
+                audioControls.classList.add('d-none');
+                addStatusMessage(`Generating batch narration for ${cryptoIds.length} cryptocurrencies...`);
+
+                // Create a combined text for all cryptocurrencies
+                let combinedText = `Here are the current prices for ${cryptoIds.length} cryptocurrencies. `;
+
+                // Fetch prices for all cryptocurrencies
+                let url = `${API_BASE_URL}/crypto/prices?cryptos=${cryptoIds.join(',')}&currency=${currency}`;
+                if (include24hChange) {
+                    url += '&with_24h_change=true';
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    Object.entries(data.prices).forEach(([cryptoId, priceData], index) => {
+                        if (priceData.success) {
+                            combinedText += `${priceData.name} is currently at ${priceData.current_price.toFixed(2)} ${currency.toUpperCase()}. `;
+
+                            if (include24hChange && priceData.price_change_24h !== undefined) {
+                                const direction = priceData.price_change_24h >= 0 ? "up" : "down";
+                                combinedText += `It has gone ${direction} ${Math.abs(priceData.price_change_24h).toFixed(2)} percent in the last 24 hours. `;
+                            }
+
+                            // Add a pause between cryptocurrencies
+                            if (index < Object.keys(data.prices).length - 1) {
+                                combinedText += "... ";
+                            }
+                        }
+                    });
+
+                    combinedText += "That concludes the price update.";
+
+                    // Generate narration for the combined text
+                    const payload = {
+                        text: combinedText,
+                        lang: 'en',
+                        slow: false,
+                        return_audio: true
+                    };
+
+                    const narrateResponse = await fetch(`${API_BASE_URL}/narrator/text`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (narrateResponse.ok) {
+                        const blob = await narrateResponse.blob();
+                        const audioUrl = URL.createObjectURL(blob);
+
+                        // Set up audio player
+                        audioPlayer.src = audioUrl;
+                        audioControls.classList.remove('d-none');
+
+                        // Auto-play the audio
+                        audioPlayer.play();
+
+                        addStatusMessage(`Playing batch narration for ${cryptoIds.length} cryptocurrencies.`);
+                    } else {
+                        const errorData = await narrateResponse.json();
+                        addStatusMessage(`Error generating narration: ${errorData.error}`, true);
+                    }
+                } else {
+                    addStatusMessage(`Error fetching prices: ${data.error}`, true);
+                }
+            } catch (error) {
+                addStatusMessage(`Error: ${error.message}`, true);
+            } finally {
+                setLoading(narratePriceBtn, narratePriceSpinner, false);
+            }
+        }
+
         // Narrate custom text
         async function narrateText() {
             const text = document.getElementById('customText').value.trim();
             const lang = document.getElementById('languageSelect').value;
             const slow = document.getElementById('slowSpeed').checked;
-            
+
             if (!text) {
                 addStatusMessage('Error: Please enter text to narrate.', true);
                 return;
             }
-            
+
             try {
+                setLoading(narrateTextBtn, narrateTextSpinner, true);
+                textAudioControls.classList.add('d-none');
                 addStatusMessage(`Generating narration for custom text...`);
-                
+
                 const payload = {
                     text: text,
                     lang: lang,
                     slow: slow,
                     return_audio: true
                 };
-                
+
                 // Fetch the audio directly
                 const response = await fetch(`${API_BASE_URL}/narrator/text`, {
                     method: 'POST',
@@ -347,15 +731,18 @@
                     },
                     body: JSON.stringify(payload)
                 });
-                
+
                 if (response.ok) {
                     const blob = await response.blob();
                     const audioUrl = URL.createObjectURL(blob);
-                    
-                    // Create and play the audio
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                    
+
+                    // Set up audio player
+                    textAudioPlayer.src = audioUrl;
+                    textAudioControls.classList.remove('d-none');
+
+                    // Auto-play the audio
+                    textAudioPlayer.play();
+
                     addStatusMessage(`Playing custom text narration.`);
                 } else {
                     const data = await response.json();
@@ -363,15 +750,17 @@
                 }
             } catch (error) {
                 addStatusMessage(`Error: ${error.message}`, true);
+            } finally {
+                setLoading(narrateTextBtn, narrateTextSpinner, false);
             }
         }
-        
+
         // Check server status
         async function checkServerStatus() {
             try {
                 const response = await fetch(`${API_BASE_URL}/health`);
                 const data = await response.json();
-                
+
                 if (data.status === 'healthy') {
                     serverStatus.textContent = 'Connected';
                     serverStatus.className = 'text-success';
@@ -382,25 +771,26 @@
             } catch (error) {
                 serverStatus.textContent = 'Disconnected';
                 serverStatus.className = 'text-danger';
-                
+
                 addStatusMessage(`Error connecting to server: ${error.message}`, true);
             }
         }
-        
+
         // Event listeners
         fetchPriceBtn.addEventListener('click', fetchPrice);
         narratePriceBtn.addEventListener('click', narratePrice);
         narrateTextBtn.addEventListener('click', narrateText);
-        
+        batchModeToggle.addEventListener('change', toggleBatchMode);
+
         // Initial setup
         document.addEventListener('DOMContentLoaded', () => {
             checkServerStatus();
             setInterval(checkServerStatus, 30000);  // Check every 30 seconds
-            
+
             addStatusMessage('Application initialized.');
         });
     </script>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-</html> 
+</html>
