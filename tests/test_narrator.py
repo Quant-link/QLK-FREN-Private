@@ -24,16 +24,20 @@ def mock_narrator_app_settings_values():
 
 
 # Patch app_settings where it's imported in narrator.py
-# Patch gTTS, playsound, and os functions at their source
+# Patch gTTS, pygame, and os functions at their source
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 def test_narrate_price_success_defaults(
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
@@ -46,6 +50,7 @@ def test_narrate_price_success_defaults(
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_os_exists.return_value = True  # Simulate temp file exists for cleanup
+    mock_get_busy.side_effect = [True, False]  # First call returns True, second False (playback finished)
 
     crypto_name = "Bitcoin"
     price = 60000.75
@@ -63,20 +68,25 @@ def test_narrate_price_success_defaults(
         slow=mock_narrator_app_settings_values["narration_slow"],
     )
     mock_tts_instance.save.assert_called_once_with(expected_temp_file)
-    mock_playsound.assert_called_once_with(expected_temp_file)
+    mock_load.assert_called_once_with(expected_temp_file)
+    mock_play.assert_called_once()
     # We no longer expect os.path.exists to be called as we're using audio_file_created flag
     mock_os_remove.assert_called_once_with(expected_temp_file)
 
 
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 def test_narrate_price_success_override_lang_slow(
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
@@ -88,6 +98,7 @@ def test_narrate_price_success_override_lang_slow(
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_os_exists.return_value = True
+    mock_get_busy.side_effect = [True, False]
 
     crypto_name = "Ethereum"
     price = 2000.50
@@ -103,20 +114,25 @@ def test_narrate_price_success_override_lang_slow(
         text=expected_text, lang=override_lang, slow=override_slow
     )
     mock_tts_instance.save.assert_called_once_with(expected_temp_file)
-    mock_playsound.assert_called_once_with(expected_temp_file)
+    mock_load.assert_called_once_with(expected_temp_file)
+    mock_play.assert_called_once()
     # We no longer expect os.path.exists to be called
     mock_os_remove.assert_called_once_with(expected_temp_file)
 
 
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 def test_narrate_price_temp_file_does_not_exist_for_cleanup(
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
@@ -128,6 +144,7 @@ def test_narrate_price_temp_file_does_not_exist_for_cleanup(
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_os_exists.return_value = False  # Simulate temp file does NOT exist
+    mock_get_busy.side_effect = [True, False]
 
     narrate_price("TestCoin", 100, "USD")
 
@@ -138,13 +155,17 @@ def test_narrate_price_temp_file_does_not_exist_for_cleanup(
 
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 def test_narrate_price_error_during_gtts_init(
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
@@ -168,19 +189,24 @@ def test_narrate_price_error_during_gtts_init(
     mock_tts_instance = MagicMock()  # Need a ref if we were to check its calls
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_tts_instance.save.assert_not_called()
-    mock_playsound.assert_not_called()
+    mock_load.assert_not_called()
+    mock_play.assert_not_called()
     mock_os_remove.assert_not_called()  # File cleanup shouldn't happen if save didn't occur.
 
 
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 def test_narrate_price_error_during_save(
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
@@ -200,45 +226,52 @@ def test_narrate_price_error_during_save(
 
     narrate_price(crypto_name, price, currency)  # noqa: E501
 
-    mock_playsound.assert_not_called()
+    mock_play.assert_not_called()
     # When save fails, audio_file_created stays False, so os.remove shouldn't be called
     mock_os_remove.assert_not_called()
 
 
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
-def test_narrate_price_error_during_playsound(
+def test_narrate_price_error_during_pygame_play(
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
 ):
-    """Test error handling if playsound() raises Exception."""
+    """Test error handling if pygame.mixer.music.play() raises Exception."""
     for key, value in mock_narrator_app_settings_values.items():
         setattr(mock_app_settings_instance, key, value)
 
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
-    mock_playsound.side_effect = Exception("Playsound failed")
+    mock_play.side_effect = Exception("Pygame play failed")
     mock_os_exists.return_value = True  # File was saved, now playing fails
 
     narrate_price("TestCoin", 100, "USD")
 
     expected_temp_file = mock_narrator_app_settings_values["temp_audio_file"]
     mock_tts_instance.save.assert_called_once_with(expected_temp_file)
-    mock_playsound.assert_called_once_with(expected_temp_file)
+    mock_load.assert_called_once_with(expected_temp_file)
+    mock_play.assert_called_once()
     # Assert that cleanup is still attempted (keep_audio_on_error is False so we remove even on failed playback)
     mock_os_remove.assert_called_once_with(expected_temp_file)
 
 
 @patch("src.narrator.app_settings", spec=AppConfig)
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 @patch("src.narrator.tempfile.gettempdir")
@@ -246,7 +279,9 @@ def test_narrate_price_error_during_remove(
     mock_tempfile_gettempdir,
     mock_os_remove,
     mock_os_exists,
-    mock_playsound,
+    mock_get_busy,
+    mock_play,
+    mock_load,
     mock_gtts_constructor,
     mock_app_settings_instance,
     mock_narrator_app_settings_values,
@@ -266,7 +301,8 @@ def test_narrate_price_error_during_remove(
     mock_os_remove.side_effect = OSError(
         "Failed to delete file"
     )  # Simulate an OS error
-    mock_playsound.return_value = True  # Ensure playback is successful
+    mock_play.return_value = True  # Ensure playback is successful
+    mock_get_busy.side_effect = [True, False]  # Simulate playback cycle
 
     # We don't need to assert an exception from narrate_price itself, as it catches this.
     # We just check that the functions were called as expected up to the point of error.
@@ -275,14 +311,16 @@ def test_narrate_price_error_during_remove(
 
     expected_temp_file = mock_narrator_app_settings_values["temp_audio_file"]
     mock_tts_instance.save.assert_called_once_with(expected_temp_file)
-    mock_playsound.assert_called_once_with(expected_temp_file)
+    mock_play.assert_called_once()
     mock_os_remove.assert_called_once_with(expected_temp_file)
 
 
 # Test for when app_settings is None (config file failed to load)
 @patch("src.narrator.app_settings", None)  # Set app_settings to None in narrator.py
 @patch("src.narrator.gTTS")
-@patch("src.narrator.playsound")
+@patch("src.narrator.pygame.mixer.music.load")
+@patch("src.narrator.pygame.mixer.music.play")
+@patch("src.narrator.pygame.mixer.music.get_busy")
 @patch("src.narrator.os.path.exists")
 @patch("src.narrator.os.remove")
 @patch("src.narrator.tempfile.gettempdir")
@@ -292,7 +330,9 @@ def test_narrate_price_app_settings_none(
     mock_tempfile_gettempdir,
     mock_os_remove, 
     mock_os_exists, 
-    mock_playsound, 
+    mock_get_busy, 
+    mock_play, 
+    mock_load,
     mock_gtts_constructor
 ):
     """Test behavior when app_settings is None (config failed to load)."""
@@ -303,7 +343,7 @@ def test_narrate_price_app_settings_none(
     mock_tts_instance = MagicMock()
     mock_gtts_constructor.return_value = mock_tts_instance
     mock_os_exists.return_value = True
-    mock_playsound.return_value = True
+    mock_play.return_value = True
 
     crypto_name = "FallbackCoin"
     price = 50
@@ -311,7 +351,7 @@ def test_narrate_price_app_settings_none(
     expected_text = f"The current price for {crypto_name} is {price:,.2f} {currency}."
 
     # We'll test with the default temp file instead
-    expected_temp_file = "/tmp/narration_test_cac.mp3"
+    expected_temp_file = "/tmp/narration_test_cache_key.mp3"
     default_lang = "en"
     default_slow = False
 
@@ -324,8 +364,9 @@ def test_narrate_price_app_settings_none(
     )
     # Check that the save call contains the temp directory path
     assert "/tmp/narration_" in mock_tts_instance.save.call_args[0][0]
-    # Check that playsound is called with the same path
-    assert mock_playsound.call_args[0][0] == mock_tts_instance.save.call_args[0][0]
+    # Check that load is called with the same path as save
+    assert mock_load.call_args[0][0] == mock_tts_instance.save.call_args[0][0]
+    mock_play.assert_called_once()
     # We no longer expect os.remove to be called since we're using the tempfile which is cached
 
 

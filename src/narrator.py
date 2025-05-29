@@ -1,5 +1,5 @@
 from gtts import gTTS
-from playsound import playsound
+import pygame
 import os
 import platform
 import subprocess
@@ -12,6 +12,9 @@ from src.app_config import app_settings  # Import the application settings
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
+
+# Initialize pygame mixer for audio playback
+pygame.mixer.init()
 
 # Use temp audio file from app_settings if available
 TEMP_AUDIO_FILE = (
@@ -34,7 +37,7 @@ def _generate_cache_key(text_to_narrate: str, lang: str, slow: bool) -> str:
 
 def play_audio_fallback(audio_file_path: str) -> bool:
     """
-    Platform-specific fallback for audio playback when playsound fails.
+    Platform-specific fallback for audio playback when pygame fails.
     Returns True if playback succeeded, False otherwise.
     
     Args:
@@ -93,8 +96,7 @@ def play_audio_fallback(audio_file_path: str) -> bool:
 
 def play_audio(audio_file_path: str) -> bool:
     """
-    Play an audio file using the most reliable method for the current platform.
-    Tries playsound first, then falls back to platform-specific methods if needed.
+    Play an audio file using pygame mixer with fallback to platform-specific methods.
     
     Args:
         audio_file_path (str): Path to the audio file to play.
@@ -102,12 +104,18 @@ def play_audio(audio_file_path: str) -> bool:
     Returns:
         bool: True if playback succeeded, False otherwise.
     """
-    # First attempt: playsound (for compatibility with existing code)
+    # First attempt: pygame (more reliable than playsound)
     try:
-        playsound(audio_file_path)
+        pygame.mixer.music.load(audio_file_path)
+        pygame.mixer.music.play()
+        
+        # Wait for playback to finish
+        while pygame.mixer.music.get_busy():
+            pygame.time.wait(100)
+            
         return True
     except Exception as e:
-        logger.warning(f"Primary playsound playback failed: {e}. Trying fallbacks...")
+        logger.warning(f"Pygame audio playback failed: {e}. Trying fallbacks...")
     
     # Second attempt: Use platform-specific fallbacks
     return play_audio_fallback(audio_file_path)

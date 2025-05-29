@@ -1,6 +1,7 @@
 requests
 gTTS
-playsound
+pydub
+pygame
 pytest
 pytest-mock
 black
