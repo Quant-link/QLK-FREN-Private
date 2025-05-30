@@ -1,384 +1,296 @@
-# QuantLink FREN Core Narrator MVP
+# QuantLink FREN Narrator Web API
 
-MVP for QuantLink's FREN: A command-line application that fetches real-time cryptocurrency price data for a specified asset from a public API (CoinGecko) and uses Text-to-Speech (TTS) to narrate the price. This serves as the foundational proof-of-concept for AI-narrated data feeds.
+A production-ready Flask web API for cryptocurrency price fetching and text-to-speech narration. Get real-time crypto prices with audio narration support.
 
 ## Features
 
-*   Fetches real-time cryptocurrency prices from CoinGecko API.
-*   Narrates the price using Google Text-to-Speech (gTTS).
-*   Supports specifying cryptocurrency ID and currency (default: Bitcoin in USD).
-*   Command-line interface for ease of use.
-*   Cross-platform audio playback with automatic fallback mechanisms.
-*   Configurable narration language and speed.
-*   Smart caching system to avoid redundant API calls and narrations.
-*   Robust error handling and configuration management.
-*   Historical price change narration (24h, 7d, 30d) with trend analysis.
-*   Batch narration of multiple cryptocurrencies in sequence.
-*   Customizable watchlists for frequently monitored assets.
-*   **Web API** interface for HTTP access to all narration features.
-*   **Web UI** with an intuitive interface for narrating cryptocurrency prices and custom text.
+- 🚀 **Fast cryptocurrency price fetching** from CoinGecko API
+- 🎵 **Text-to-speech narration** for prices and custom text
+- 📊 **Multiple cryptocurrency support** with price change data
+- 🌐 **RESTful API** with comprehensive endpoints
+- 🐳 **Docker-ready** for easy deployment
+- ☁️ **Render deployment** for quick demos
+- 📈 **Health monitoring** and logging
+- 🔒 **Production security** with rate limiting and CORS
 
-## Prerequisites
+## Quick Start
 
-*   Python 3.7+
+### Option 1: Render (Quick Demo)
 
-## Setup
+**Perfect for sharing demos internally**
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Quant-link/quantlink-fren-core-narrator.git
-    cd quantlink-fren-core-narrator
-    ```
+1. Push your code to GitHub
+2. Connect your repo to [Render](https://render.com)
+3. Deploy automatically using the included `render.yaml`
+4. Your API will be live at `https://your-app.onrender.com`
 
-2.  **Create and activate a virtual environment:**
-    *   On macOS and Linux:
-        ```bash
-        python3 -m venv venv
-        source venv/bin/activate
-        ```
-    *   On Windows:
-        ```bash
-        python -m venv venv
-        .\venv\Scripts\activate
-        ```
-
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Usage
-
-The application can be used in two modes:
-
-1. **Command-line Interface (CLI)**: Run as a traditional command-line application
-2. **Web API Server**: Run as a web server offering HTTP endpoints
-
-### Command-line Interface
-
-Run the script from the command line with various options based on your needs:
-
-#### Single Cryptocurrency Mode
+### Option 2: Docker (Production)
 
 ```bash
-python main.py --crypto <crypto_id> --currency <currency_code> [additional options]
+# Clone the repository
+git clone https://github.com/yourusername/quantlink-fren-narrator.git
+cd quantlink-fren-narrator
+
+# Quick test deployment
+./quick-deploy.sh
+
+# Or manual Docker commands
+docker build -t quantlink-narrator .
+docker run -p 8000:8000 quantlink-narrator
 ```
 
-#### Multiple Cryptocurrencies (Batch) Mode
+### Option 3: Local Development
 
 ```bash
-python main.py --cryptos <comma_separated_crypto_ids> --currency <currency_code> [additional options]
+# Install dependencies
+pip install -r requirements.txt
+
+# Run development server
+python web_api.py --debug
+
+# Test the API
+curl http://localhost:5000/api/health
 ```
 
-**Arguments:**
+## API Endpoints
 
-*   `--crypto`: (Optional) The CoinGecko ID of a single cryptocurrency (e.g., `bitcoin`, `ethereum`, `solana`). Defaults to `bitcoin`.
-*   `--cryptos`: (Optional) Comma-separated list of cryptocurrency IDs for batch narration (e.g., `bitcoin,ethereum,solana`). Cannot be used with `--crypto`.
-*   `--currency`: (Optional) The currency code for the price (e.g., `usd`, `eur`). Defaults to `usd`.
-*   `--lang`: (Optional) Language for narration (e.g., `en`, `es`, `fr`). Defaults to value in config.ini.
-*   `--slow`: (Optional) Use slower narration speed. Use `--no-slow` for normal speed. Defaults to value in config.ini.
-*   `--force-new`: (Optional) Force creation of new narration even if a cached version exists.
-*   `--debug`: (Optional) Enable debug level logging.
-
-**Price Change Options:**
-
-*   `--with-24h-change`: Include 24-hour price change in the narration.
-*   `--with-7d-change`: Include 7-day price change in the narration (requires additional API call).
-*   `--with-30d-change`: Include 30-day price change in the narration (requires additional API call).
-
-**Examples:**
-
-*   Fetch and narrate the price of Bitcoin in USD (default):
-    ```bash
-    python main.py
-    ```
-*   Fetch and narrate the price of Ethereum in USD:
-    ```bash
-    python main.py --crypto ethereum
-    ```
-*   Fetch and narrate the price of Solana in EUR:
-    ```bash
-    python main.py --crypto solana --currency eur
-    ```
-*   Narrate Bitcoin price in Spanish with slow speed:
-    ```bash
-    python main.py --lang es --slow
-    ```
-*   Force a new narration, bypassing the cache:
-    ```bash
-    python main.py --force-new
-    ```
-*   Fetch Bitcoin price with 24-hour price change:
-    ```bash
-    python main.py --with-24h-change
-    ```
-*   Fetch Bitcoin price with 24-hour, 7-day, and 30-day price changes:
-    ```bash
-    python main.py --with-24h-change --with-7d-change --with-30d-change
-    ```
-*   Narrate multiple cryptocurrencies in sequence:
-    ```bash
-    python main.py --cryptos "bitcoin,ethereum,solana"
-    ```
-*   Narrate multiple cryptocurrencies with 24-hour price changes:
-    ```bash
-    python main.py --cryptos "bitcoin,ethereum,solana" --with-24h-change
-    ```
-
-### Web API Server
-
-Run the Web API server to access all narration features via HTTP:
-
+### Health Check
 ```bash
-python web_api.py [--host <host>] [--port <port>] [--debug]
-```
-
-**Arguments:**
-
-*   `--host`: (Optional) Host to run the server on. Defaults to `127.0.0.1`.
-*   `--port`: (Optional) Port to run the server on. Defaults to `5000`.
-*   `--debug`: (Optional) Run in debug mode.
-
-Once the server is running, you can access:
-
-1. **Web User Interface**: Open your browser and visit `http://localhost:5000/` (or your configured host/port) to access the interactive web interface.
-
-2. **API Endpoints**:
-
-#### Health Check
-
-```
 GET /api/health
+# Returns: {"status": "healthy", "version": "1.0.0"}
 ```
 
-Returns basic health information about the API.
+### Cryptocurrency Prices
+```bash
+# Single price
+GET /api/crypto/price?crypto=bitcoin&currency=usd
 
-#### Get Cryptocurrency Price
+# Multiple prices
+GET /api/crypto/prices?cryptos=bitcoin,ethereum&currency=usd
 
-```
-GET /api/crypto/price?crypto=<crypto_id>&currency=<currency_code>&with_24h_change=<true|false>&with_7d_change=<true|false>&with_30d_change=<true|false>
-```
-
-Fetches and returns price data for a single cryptocurrency.
-
-#### Get Multiple Cryptocurrency Prices
-
-```
-GET /api/crypto/prices?cryptos=<comma_separated_crypto_ids>&currency=<currency_code>&with_24h_change=<true|false>
+# Price with 24h change
+GET /api/crypto/price?crypto=bitcoin&with_24h_change=true
 ```
 
-Fetches and returns price data for multiple cryptocurrencies in a single request.
-
-#### Narrate Custom Text
-
-```
+### Text-to-Speech Narration
+```bash
+# Narrate custom text
 POST /api/narrator/text
-Content-Type: application/json
-
 {
-  "text": "Text to narrate",
+  "text": "Hello world",
   "lang": "en",
   "slow": false,
   "return_audio": false
 }
-```
 
-Generates audio narration for custom text. If `return_audio` is `false`, returns a file ID that can be used to retrieve the audio file. If `return_audio` is `true`, returns the audio file directly.
-
-#### Get Audio File
-
-```
-GET /api/narrator/audio/<file_id>
-```
-
-Retrieves a previously generated audio file by its ID.
-
-#### Narrate Cryptocurrency Price
-
-```
+# Narrate crypto price
 POST /api/narrator/crypto
-Content-Type: application/json
-
 {
   "crypto": "bitcoin",
   "currency": "usd",
   "with_24h_change": true,
-  "with_7d_change": false,
-  "with_30d_change": false,
-  "lang": "en",
-  "slow": false,
   "return_audio": false
 }
+
+# Get audio file by ID
+GET /api/narrator/audio/<file_id>
 ```
 
-Fetches cryptocurrency price data and generates audio narration. If `return_audio` is `false`, returns price data and a file ID that can be used to retrieve the audio file. If `return_audio` is `true`, returns the audio file directly.
+## Deployment Options
 
-**Example using curl:**
+### 🎯 Render (Internal Demos)
+- **Setup time:** 5 minutes
+- **Cost:** Free tier available
+- **Perfect for:** Quick demos, prototypes, team sharing
 
+1. Connect your GitHub repo to [Render](https://render.com)
+2. Render auto-detects the `render.yaml` configuration
+3. Deploy with one click ✅
+4. Features: Auto-deploy, SSL, monitoring
+
+### 🐳 Docker (Production)
+- **Setup time:** 15 minutes  
+- **Cost:** Variable (depends on hosting)
+- **Perfect for:** Production environments, full control
+
+#### Local Testing
 ```bash
-# Get Bitcoin price
-curl "http://localhost:5000/api/crypto/price?crypto=bitcoin&currency=usd"
-
-# Narrate Bitcoin price and get file ID
-curl -X POST "http://localhost:5000/api/narrator/crypto" \
-  -H "Content-Type: application/json" \
-  -d '{"crypto":"bitcoin","currency":"usd","with_24h_change":true}'
-
-# Get audio file using file ID
-curl -O -J "http://localhost:5000/api/narrator/audio/<file_id>"
+# Test Docker setup
+./quick-deploy.sh
 ```
 
-## Project Structure
+#### Production Deployment
+```bash
+# Docker Compose (recommended)
+docker-compose up -d
 
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
 ```
-quantlink-fren-core-narrator/
-├── config.ini          # Application configuration
-├── src/
-│   ├── __init__.py
-│   ├── app_config.py   # Configuration management
-│   ├── price_fetcher.py  # Fetches cryptocurrency prices
-│   └── narrator.py     # Handles text-to-speech narration
-├── tests/              # Unit tests
-│   ├── __init__.py
-│   ├── test_price_fetcher.py
-│   └── test_narrator.py
-├── main.py             # CLI application entry point
-├── web_api.py          # Web API server entry point
-├── requirements.txt    # Python dependencies
-└── README.md
+
+#### Cloud Container Services
+```bash
+# Google Cloud Run
+gcloud builds submit --tag gcr.io/PROJECT_ID/quantlink-narrator
+gcloud run deploy --image gcr.io/PROJECT_ID/quantlink-narrator
+
+# AWS/Azure - deploy to your preferred container service
 ```
 
 ## Configuration
 
-The application uses a `config.ini` file for configuration with these key sections:
+### Environment Variables
+Copy `env.example` to `.env` and customize:
 
-### [API]
-- `BASE_URL`: Base URL for the CoinGecko API
-- `PRICE_ENDPOINT`: API endpoint for price data
-- `REQUEST_TIMEOUT`: Timeout for API requests in seconds
+```bash
+# Production settings
+FLASK_ENV=production
+DEFAULT_CRYPTO_ID=bitcoin
+DEFAULT_VS_CURRENCY=usd
 
-### [Retry]
-- `MAX_RETRIES`: Maximum number of API request retry attempts
-- `INITIAL_BACKOFF_DELAY`: Initial delay before the first retry (seconds)
-- `BACKOFF_FACTOR`: Multiplier for backoff between retries
-- `RETRYABLE_STATUS_CODES`: HTTP status codes that warrant a retry
+# Docker settings
+HOST=0.0.0.0
+PORT=8000
+WORKERS=4
+```
 
-### [Defaults]
-- `CRYPTO_ID`: Default cryptocurrency ID to fetch
-- `VS_CURRENCY`: Default currency for price data
-- `INCLUDE_24H_CHANGE`: Whether to include 24h price change by default
-- `INCLUDE_7D_CHANGE`: Whether to include 7d price change by default
-- `INCLUDE_30D_CHANGE`: Whether to include 30d price change by default
-- `CRYPTO_WATCHLIST`: Default list of cryptocurrencies for batch narration
+### Security Features
+- ✅ Rate limiting (10 requests/second)
+- ✅ CORS protection
+- ✅ Security headers
+- ✅ Input validation
+- ✅ Error handling
 
-### [BatchNarration]
-- `NARRATE_INTRO`: Whether to narrate an introduction in batch mode
-- `NARRATION_PAUSE`: Pause duration between narrations in seconds
-- `MAX_CRYPTOS`: Maximum number of cryptocurrencies to narrate in one batch
+## Testing & Monitoring
 
-### [Logging]
-- `TEMP_AUDIO_FILE`: Temporary audio file name
-- `LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+### Automated Testing
+```bash
+# Test any deployment
+python test_deployment.py http://localhost:8000
+python test_deployment.py https://your-app.onrender.com
+```
 
-### [Narrator]
-- `NARRATION_LANG`: Language for TTS narration
-- `NARRATION_SLOW`: Whether to use slow narration speed
-- `KEEP_AUDIO_ON_ERROR`: Whether to keep audio files when playback fails
+### Manual Testing
+```bash
+# Health check
+curl https://your-domain.com/api/health
 
-### [Cache]
-- `ENABLED`: Whether to enable the narration cache
-- `EXPIRATION`: How long to keep cached narrations (in seconds)
-- `MAX_ITEMS`: Maximum number of items to keep in the cache
+# Price endpoint
+curl "https://your-domain.com/api/crypto/price?crypto=bitcoin"
 
-## Notes
+# Text narration
+curl -X POST "https://your-domain.com/api/narrator/text" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Hello world"}'
+```
 
-*   Cross-platform audio playback is supported with automatic fallbacks:
-    - Windows: Falls back to PowerShell SoundPlayer if playsound fails
-    - macOS: Falls back to afplay if playsound fails
-    - Linux: Tries multiple players (paplay, aplay, mpg123, mpg321) if playsound fails
-*   When audio playback fails, the file location is displayed so you can play it manually if needed.
-*   You can set `KEEP_AUDIO_ON_ERROR = True` in config.ini to retain audio files when playback fails.
-*   Narration caching saves resources by reusing recent narrations for the same price:
-    - Cache entries expire after the time specified in `EXPIRATION` (default: 5 minutes)
-    - Override caching with the `--force-new` command line option
-    - Disable caching by setting `ENABLED = False` in the `[Cache]` section of config.ini
-*   Price change options:
-    - 24-hour changes are fetched in the same API call as the current price
-    - 7-day and 30-day changes require an additional API call and may be subject to stricter rate limits
-*   Batch narration allows you to listen to multiple cryptocurrencies in sequence:
-    - Introduces each batch with a summary of how many prices are about to be narrated
-    - Each cryptocurrency is narrated with appropriate pauses between them
-    - A concluding message is played after all cryptocurrencies are narrated
-*   Web API:
-    - Temporary audio files created by the Web API are automatically cleaned up after 30 minutes
-    - The Web API does not play audio files; it generates them and allows clients to download them
-    - CORS is enabled to allow cross-domain access to the API
+### Health Checks & Logs
+```bash
+# Render: Built-in dashboard
+# Docker: docker-compose logs -f
+# Cloud: Provider log viewers
+```
 
-## Project Purpose, Roadmap, and Development Plan
+## Cost Comparison
 
-### Purpose
+| Platform | Setup Time | Monthly Cost | Best For |
+|----------|------------|--------------|----------|
+| Render | 5 minutes | $0 (free tier) | Demos, prototypes |
+| Docker + VPS | 15 minutes | $5-20 | Production |
+| Cloud Run | 10 minutes | Pay-per-use | Variable traffic |
 
-The **QuantLink FREN Core Narrator** serves as the Minimum Viable Product (MVP) for a more extensive system aimed at providing AI-narrated data feeds. The primary goal of this repository is to establish a foundational command-line application that can:
+## Development
 
-1.  Fetch real-time data for a specified asset (initially cryptocurrencies) from a public API.
-2.  Convert this data into a human-readable textual format.
-3.  Utilize Text-to-Speech (TTS) technology to audibly narrate the information.
+### Project Structure
+```
+quantlink-fren-narrator/
+├── src/                    # Core application modules
+│   ├── narrator.py        # Text-to-speech functionality
+│   ├── price_fetcher.py   # Cryptocurrency price fetching
+│   └── app_config.py      # Configuration management
+├── static/                # Static files
+├── web_api.py            # Main Flask application
+├── wsgi.py               # WSGI entry point
+├── Dockerfile            # Container configuration
+├── docker-compose.yml    # Docker Compose setup
+├── render.yaml           # Render deployment config
+├── quick-deploy.sh       # Docker test script
+└── requirements.txt      # Python dependencies
+```
 
-This MVP validates the core concept of fetching and narrating financial data, paving the way for future enhancements and integrations within the broader QuantLink ecosystem. It demonstrates the technical feasibility of combining data retrieval with AI-driven voice output for delivering timely information.
+### Testing
+```bash
+# Run deployment tests
+python test_deployment.py http://localhost:8000
 
-### Current Status: Enhanced MVP
+# Test Docker locally
+./quick-deploy.sh
 
-The current version of this repository successfully implements all the core MVP functionalities with several notable enhancements:
+# Manual API testing
+curl http://localhost:8000/api/crypto/price?crypto=bitcoin
+```
 
-*   **Price Fetching:** Connects to the CoinGecko API to retrieve current prices and historical changes for specified cryptocurrencies against various fiat currencies. Includes robust error handling and retries.
-*   **Narration:** Uses `gTTS` (Google Text-to-Speech) to convert the fetched prices and trends into audio narrations with reliable cross-platform playback.
-*   **Command-Line Interface:** Allows users to specify multiple options including cryptocurrency, target currency, language, narration speed, caching behavior, and price change periods.
-*   **Web API:** Provides HTTP endpoints for accessing all narration features, making the functionality available to other applications.
-*   **Multi-Crypto Support:** Supports batch narration of multiple cryptocurrencies with appropriate introduction and conclusion narrations.
-*   **Caching System:** Implements a smart caching system to avoid redundant API calls and narrations for repeated queries, improving performance and reducing resource usage.
-*   **Modular Structure:** A well-organized, modular structure with separate components for configuration, price fetching, and narration.
+## Troubleshooting
 
-### Development Plan & Future Enhancements
+### Render Issues
+- Check build logs in Render dashboard
+- Verify `render.yaml` configuration
+- Ensure environment variables are set
 
-Moving forward, the following enhancements are planned:
+### Docker Issues
+- Check container logs: `docker logs <container_id>`
+- Ensure all dependencies in requirements.txt
+- Verify port mapping is correct
 
-**Phase 1: User Experience & Data Visualization (Short-Term)**
+### API Issues
+- Test health endpoint first: `/api/health`
+- Check network connectivity to CoinGecko API
+- Verify gTTS can connect for audio generation
 
-1.  **Interactive UI:** ✅
-    *   ~~Implement a simple terminal-based UI using libraries like `curses` or `rich` for a more interactive experience.~~
-    *   ~~Allow users to select cryptocurrencies from a menu and customize narration preferences.~~
-    *   ~~Display price charts alongside narration for visual reinforcement.~~
-    *   Implemented a full Web API with a responsive web interface for narrating cryptocurrency prices.
-    *   Added ability to select cryptocurrencies, currencies, and narration options from a user-friendly interface.
-    *   Created functionality for narrating custom text with language options.
+## Which Should I Choose?
 
-2.  **Notification System:**
-    *   Add price alerts for significant price movements.
-    *   Set up scheduled narrations at regular intervals.
-    *   Implement desktop notifications when prices cross user-defined thresholds.
+**Use Render when:**
+- 🎯 Quick internal demos
+- 🎯 Prototyping and testing
+- 🎯 Want zero-config deployment
+- 🎯 Sharing with team members
 
-**Phase 2: Advanced Narration Features (Mid-Term)**
+**Use Docker when:**
+- 🎯 Production environments
+- 🎯 Need full control over environment
+- 🎯 Scaling requirements
+- 🎯 Want consistent dev/prod environments
 
-1.  **Enhanced Voice Capabilities:**
-    *   Support more advanced TTS services with more natural-sounding voices (e.g., Google Cloud TTS, Amazon Polly).
-    *   Add voice personality selection to match user preferences.
-    *   Implement more sophisticated phrasing for price narrations and trend analysis.
+## Quick Deploy Steps
 
-2.  **Custom Narration Templates:**
-    *   Allow users to define custom narration templates (e.g., "Bitcoin is currently at $X, showing a Y% change since yesterday").
-    *   Support variables and conditional logic in templates.
-    *   Add preset templates for different scenarios (e.g., quick updates, detailed analysis).
+### For Internal Demo (Render):
+1. `git push` to GitHub
+2. Connect repo to Render
+3. Deploy automatically ✅
 
-**Phase 3: Integration & AI Features (Long-Term)**
+### For Production (Docker):
+1. `./quick-deploy.sh` (test locally)
+2. Deploy to your cloud provider
+3. Set up monitoring ✅
 
-1.  **Integration with Other Financial Data:**
-    *   Add support for stock market data, commodities, forex, and other financial instruments.
-    *   Implement portfolio narration for aggregated holdings.
-    *   Create narrated data feeds that can be consumed by other applications.
+## Contributing
 
-2.  **AI-Powered Insights:**
-    *   Generate simple trend analysis and predictions based on historical data.
-    *   Add sentiment analysis from news and social media sources.
-    *   Provide context-aware narrations that adapt to market conditions.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-By following this development plan, the `quantlink-fren-core-narrator` will evolve from an enhanced proof-of-concept into a sophisticated tool for narrating financial data with intelligent insights.
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Ready to deploy?** 
+- **Quick demo:** Use Render 
+- **Production:** Use Docker
+Get your API running in minutes! 🚀

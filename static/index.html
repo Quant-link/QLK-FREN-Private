@@ -306,8 +306,8 @@
     </div>
 
     <script>
-        // Configuration
-        const API_BASE_URL = 'http://localhost:5000/api';
+        // Configuration - dynamically use current host and port
+        const API_BASE_URL = `${window.location.protocol}//${window.location.host}/api`;
 
         // DOM elements
         const fetchPriceBtn = document.getElementById('fetchPriceBtn');
