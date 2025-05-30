@@ -407,3 +407,4 @@ def get_multiple_crypto_prices(
     
     # Return whatever results we have, which might be empty or partial
     return results
+ 

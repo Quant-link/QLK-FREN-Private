@@ -568,3 +568,4 @@ def test_get_multiple_crypto_prices_empty_list(
 
     assert result == {}  # Should return an empty dictionary
     mock_requests_get.assert_not_called()  # No API call should be made
+ 

@@ -401,6 +401,18 @@ def index():
     return send_from_directory(app.static_folder, 'index.html')
 
 
+@app.route('/logo.jpg')
+def logo():
+    """Serve the logo file."""
+    return send_from_directory(app.static_folder, 'logo.jpg')
+
+
+@app.route('/<path:filename>')
+def static_files(filename):
+    """Serve static files."""
+    return send_from_directory(app.static_folder, filename)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="QuantLink FREN Narrator Web API")
     parser.add_argument('--host', type=str, default='127.0.0.1', help='Host to run the server on')

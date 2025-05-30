@@ -300,3 +300,4 @@ except configparser.Error:
         "Failed to init AppConfig due to parsing error. App may not function."
     )
     app_settings = None
+ 
