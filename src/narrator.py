@@ -13,8 +13,15 @@ from src.app_config import app_settings  # Import the application settings
 # Configure logger for this module
 logger = logging.getLogger(__name__)
 
-# Initialize pygame mixer for audio playback
-pygame.mixer.init()
+# Initialize pygame mixer for audio playback with error handling
+try:
+    # Set SDL audio driver to dummy if in headless environment
+    if os.environ.get('SDL_AUDIODRIVER') == 'dummy':
+        logger.info("Using dummy SDL audio driver for headless environment")
+    pygame.mixer.init()
+    logger.debug("Pygame mixer initialized successfully")
+except Exception as e:
+    logger.warning(f"Pygame mixer initialization failed: {e}. Audio playback may not work.")
 
 # Use temp audio file from app_settings if available
 TEMP_AUDIO_FILE = (
@@ -106,6 +113,11 @@ def play_audio(audio_file_path: str) -> bool:
     """
     # First attempt: pygame (more reliable than playsound)
     try:
+        # Check if pygame mixer is properly initialized
+        if not pygame.mixer.get_init():
+            logger.warning("Pygame mixer not initialized, attempting to reinitialize...")
+            pygame.mixer.init()
+            
         pygame.mixer.music.load(audio_file_path)
         pygame.mixer.music.play()
         
