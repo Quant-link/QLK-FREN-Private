@@ -1,6 +1,6 @@
 // API utility for interacting with the Flask backend
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001';
 
 export interface CryptoPrice {
   name: string;

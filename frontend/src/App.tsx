@@ -40,6 +40,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
 
   // Popular cryptocurrencies for live feed
   const popularCryptos = ["bitcoin", "ethereum", "solana", "cardano", "polkadot", "chainlink"];
@@ -167,6 +168,48 @@ function App() {
     return `${sign}${change.toFixed(2)}%`;
   };
 
+  // Navigation handlers
+  const handleNavigation = (section: string) => {
+    setActiveSection(section);
+    // Here you can add navigation logic based on the section
+    switch (section) {
+      case "home":
+        console.log("Navigate to Home");
+        break;
+      case "trends":
+        console.log("Navigate to Trends");
+        break;
+      case "voice":
+        console.log("Navigate to Voice Controls");
+        break;
+      case "analytics":
+        console.log("Navigate to Analytics");
+        break;
+      case "help":
+        console.log("Show Help");
+        break;
+      case "settings":
+        console.log("Open Settings");
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Header button handlers
+  const handleWalletClick = () => {
+    console.log("Wallet clicked");
+    // Add wallet functionality here
+  };
+
+  const handleAnalyticsClick = () => {
+    handleNavigation("analytics");
+  };
+
+  const handleSettingsClick = () => {
+    handleNavigation("settings");
+  };
+
   return (
     <>
       <div className="bg-linear-to-b from-[#f1f1f5] to-[#c9d6e3] w-screen h-screen absolute z-[-1]"></div>
@@ -178,13 +221,25 @@ function App() {
                 <img src="/logo.svg" alt="Quantlink" />
               </div>
               <div className="flex gap-4">
-                <button className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
+                <button 
+                  className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  onClick={handleWalletClick}
+                  title="Wallet"
+                >
                   <WalletIcon size={24} />
                 </button>
-                <button className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
+                <button 
+                  className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  onClick={handleAnalyticsClick}
+                  title="Analytics"
+                >
                   <AnalyticsIcon size={24} />
                 </button>
-                <button className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
+                <button 
+                  className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  onClick={handleSettingsClick}
+                  title="Settings"
+                >
                   <SettingsIcon size={24} />
                 </button>
               </div>
@@ -193,24 +248,48 @@ function App() {
           <div className="container mx-auto grid grid-cols-[64px_1fr] gap-8 h-full grow mt-[120px]">
             <aside className="flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
               <div className="flex flex-col gap-4">
-                <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
+                <button 
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'home' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  onClick={() => handleNavigation('home')}
+                  title="Home"
+                >
                   <HomeIcon size={28} />
                 </button>
-                <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
+                <button 
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'trends' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  onClick={() => handleNavigation('trends')}
+                  title="Market Trends"
+                >
                   <TrendingUpIcon size={28} />
                 </button>
-                <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
+                <button 
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'voice' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  onClick={() => handleNavigation('voice')}
+                  title="Voice Controls"
+                >
                   <VolumeIcon size={28} />
                 </button>
-                <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
+                <button 
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'analytics' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  onClick={() => handleNavigation('analytics')}
+                  title="Analytics Dashboard"
+                >
                   <BarChartIcon size={28} />
                 </button>
               </div>
               <div className="flex flex-col gap-4">
-                <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
+                <button 
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'help' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  onClick={() => handleNavigation('help')}
+                  title="Help & Support"
+                >
                   <HelpIcon size={28} />
                 </button>
-                <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
+                <button 
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'settings' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  onClick={() => handleNavigation('settings')}
+                  title="Settings"
+                >
                   <SettingsIcon size={28} />
                 </button>
               </div>
@@ -397,14 +476,22 @@ function App() {
                         
                         {/* Audio Control */}
                         {audioUrl && (
-                          <button
-                            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
-                            onClick={handlePlayAudio}
-                            disabled={isPlaying}
-                          >
-                            <VolumeIcon size={16} />
-                            {isPlaying ? "Playing..." : "Play Again"}
-                          </button>
+                          <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="text-sm font-medium text-gray-700">Audio Ready</span>
+                              </div>
+                              <button
+                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+                                onClick={handlePlayAudio}
+                                disabled={isPlaying}
+                              >
+                                <VolumeIcon size={16} />
+                                {isPlaying ? "Playing..." : "Play Audio"}
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
