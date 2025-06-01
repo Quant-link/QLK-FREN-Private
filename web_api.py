@@ -401,16 +401,21 @@ def index():
     return send_from_directory(app.static_folder, 'index.html')
 
 
-@app.route('/logo.jpg')
+@app.route('/logo.svg')
 def logo():
     """Serve the logo file."""
-    return send_from_directory(app.static_folder, 'logo.jpg')
+    return send_from_directory(app.static_folder, 'logo.svg')
 
 
 @app.route('/<path:filename>')
 def static_files(filename):
-    """Serve static files."""
-    return send_from_directory(app.static_folder, filename)
+    """Serve static files for React app with SPA routing support."""
+    try:
+        # Try to serve the requested file
+        return send_from_directory(app.static_folder, filename)
+    except Exception:
+        # If file doesn't exist, serve index.html for client-side routing
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 if __name__ == '__main__':

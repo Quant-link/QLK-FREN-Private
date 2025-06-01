@@ -1,9 +1,10 @@
-# QuantLink FREN Narrator Web API
+# QuantLink FREN Narrator
 
-A production-ready Flask web API for cryptocurrency price fetching and text-to-speech narration. Get real-time crypto prices with audio narration support.
+A production-ready cryptocurrency price narration platform with a modern React frontend and Flask API backend. Get real-time crypto prices with an intuitive dashboard and audio narration support.
 
 ## Features
 
+- 🎨 **Modern React Frontend** with TypeScript and Tailwind CSS
 - 🚀 **Fast cryptocurrency price fetching** from CoinGecko API
 - 🎵 **Text-to-speech narration** for prices and custom text
 - 📊 **Multiple cryptocurrency support** with price change data
@@ -15,42 +16,72 @@ A production-ready Flask web API for cryptocurrency price fetching and text-to-s
 
 ## Quick Start
 
-### Option 1: Render (Quick Demo)
-
-**Perfect for sharing demos internally**
-
-1. Push your code to GitHub
-2. Connect your repo to [Render](https://render.com)
-3. Deploy automatically using the included `render.yaml`
-4. Your API will be live at `https://your-app.onrender.com`
-
-### Option 2: Docker (Production)
+### Option 1: Local Development
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/quantlink-fren-narrator.git
 cd quantlink-fren-narrator
 
-# Quick test deployment
-./quick-deploy.sh
+# Start development environment (builds frontend + starts backend)
+./dev-start.sh
 
-# Or manual Docker commands
-docker build -t quantlink-narrator .
-docker run -p 8000:8000 quantlink-narrator
+# Access the application
+# Frontend: http://localhost:5000
+# API: http://localhost:5000/api/
 ```
 
-### Option 3: Local Development
+### Option 2: Development Mode (Frontend + Backend Separately)
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run development server
+# Terminal 1: Start backend API
 python web_api.py --debug
 
-# Test the API
-curl http://localhost:5000/api/health
+# Terminal 2: Start frontend development server
+cd frontend
+npm install
+npm run dev
+# Frontend: http://localhost:5173 (with API proxy)
 ```
+
+### Option 3: Render (Quick Demo)
+
+**Perfect for sharing demos internally**
+
+1. Push your code to GitHub
+2. Connect your repo to [Render](https://render.com)
+3. Deploy automatically using the included `render.yaml`
+4. Your app will be live at `https://your-app.onrender.com`
+
+### Option 4: Docker (Production)
+
+```bash
+# Build and run with Docker
+docker build -t quantlink-narrator .
+docker run -p 8000:8000 quantlink-narrator
+
+# Or use the quick test script
+./quick-deploy.sh
+```
+
+## Frontend Features
+
+The React frontend provides:
+
+- 📊 **Real-time price dashboard** with live crypto feeds
+- 🎛️ **Interactive controls** for price fetching and narration
+- 📈 **Price history visualization** with candlestick charts
+- 🔊 **Audio narration controls** with customizable options
+- 📱 **Responsive design** for desktop and mobile
+- 🎨 **Modern UI/UX** with smooth animations
+
+### Frontend Technology Stack
+
+- **React 19** with TypeScript
+- **Vite** for fast development and building
+- **Tailwind CSS** for styling
+- **Custom components** for crypto visualization
+- **API integration** with the Flask backend
 
 ## API Endpoints
 
@@ -207,14 +238,24 @@ curl -X POST "https://your-domain.com/api/narrator/text" \
 ### Project Structure
 ```
 quantlink-fren-narrator/
-├── src/                    # Core application modules
+├── frontend/               # React frontend application
+│   ├── src/               # React source code
+│   │   ├── components/    # React components
+│   │   ├── App.tsx        # Main App component
+│   │   └── main.tsx       # Entry point
+│   ├── public/            # Public assets
+│   ├── package.json       # Frontend dependencies
+│   ├── vite.config.ts     # Vite configuration
+│   └── dist/              # Built frontend (auto-generated)
+├── src/                   # Backend core modules
 │   ├── narrator.py        # Text-to-speech functionality
 │   ├── price_fetcher.py   # Cryptocurrency price fetching
 │   └── app_config.py      # Configuration management
-├── static/                # Static files
+├── static/                # Built frontend files (served by Flask)
 ├── web_api.py            # Main Flask application
 ├── wsgi.py               # WSGI entry point
-├── Dockerfile            # Container configuration
+├── dev-start.sh          # Development startup script
+├── Dockerfile            # Multi-stage container build
 ├── docker-compose.yml    # Docker Compose setup
 ├── render.yaml           # Render deployment config
 ├── quick-deploy.sh       # Docker test script

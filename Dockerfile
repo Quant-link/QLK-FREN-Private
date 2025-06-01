@@ -1,3 +1,21 @@
+# Frontend build stage
+FROM node:18-alpine as frontend-build
+
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY frontend/package*.json ./
+
+# Install frontend dependencies
+RUN npm install
+
+# Copy frontend source code
+COPY frontend/ ./
+
+# Build the frontend
+RUN npm run build
+
+# Python backend stage
 FROM python:3.11-slim as base
 
 # Set environment variables
@@ -28,8 +46,11 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code (excluding frontend source)
 COPY . .
+
+# Copy built frontend from frontend-build stage
+COPY --from=frontend-build /app/frontend/dist ./static
 
 # Create necessary directories
 RUN mkdir -p /tmp/quantlink-audio && \

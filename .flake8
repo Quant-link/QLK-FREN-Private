@@ -7,7 +7,8 @@ exclude =
     .venv,
     build,
     dist,
-    *.egg-info
+    *.egg-info,
+    .dockerignore
 # Ignore specific error codes:
 # E501: line too long
 # W291: trailing whitespace
