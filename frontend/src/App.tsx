@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import XrpEthIcon from "./components/XrpEthIcon";
 import {
   getCryptoPrice,
   getMultipleCryptoPrices,
@@ -8,6 +7,18 @@ import {
   healthCheck,
   type CryptoPrice,
 } from "./api/cryptoApi";
+import { getCryptoIcon, getCryptoDisplayName } from "./utils/cryptoIcons";
+import {
+  WalletIcon,
+  ChartIcon,
+  SettingsIcon,
+  HomeIcon,
+  TrendingUpIcon,
+  VolumeIcon,
+  BarChartIcon,
+  HelpIcon,
+  AnalyticsIcon,
+} from "./components/Icons";
 
 interface SystemStatus {
   status: string;
@@ -168,13 +179,13 @@ function App() {
               </div>
               <div className="flex gap-4">
                 <button className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
-                  <span className="text-sm">💰</span>
+                  <WalletIcon size={24} />
                 </button>
                 <button className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
-                  <span className="text-sm">📊</span>
+                  <AnalyticsIcon size={24} />
                 </button>
                 <button className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors">
-                  <span className="text-sm">⚙️</span>
+                  <SettingsIcon size={24} />
                 </button>
               </div>
             </div>
@@ -183,24 +194,24 @@ function App() {
             <aside className="flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
               <div className="flex flex-col gap-4">
                 <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
-                  <span className="text-lg">🏠</span>
+                  <HomeIcon size={28} />
                 </button>
                 <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
-                  <span className="text-lg">📈</span>
+                  <TrendingUpIcon size={28} />
                 </button>
                 <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
-                  <span className="text-lg">🔊</span>
+                  <VolumeIcon size={28} />
                 </button>
                 <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
-                  <span className="text-lg">📊</span>
+                  <BarChartIcon size={28} />
                 </button>
               </div>
               <div className="flex flex-col gap-4">
                 <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
-                  <span className="text-lg">❓</span>
+                  <HelpIcon size={28} />
                 </button>
                 <button className="w-[64px] h-[64px] rounded-[18px] bg-white hover:bg-gray-50 transition-colors flex items-center justify-center">
-                  <span className="text-lg">⚙️</span>
+                  <SettingsIcon size={28} />
                 </button>
               </div>
             </aside>
@@ -387,11 +398,12 @@ function App() {
                         {/* Audio Control */}
                         {audioUrl && (
                           <button
-                            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+                            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                             onClick={handlePlayAudio}
                             disabled={isPlaying}
                           >
-                            {isPlaying ? "Playing..." : "🔊 Play Again"}
+                            <VolumeIcon size={16} />
+                            {isPlaying ? "Playing..." : "Play Again"}
                           </button>
                         )}
                       </div>
@@ -410,10 +422,10 @@ function App() {
                       return (
                         <div key={crypto} className="flex items-center gap-6 bg-white rounded-[18px] px-[24px] py-[20px] font-space-grotesk">
                           <div>
-                            <XrpEthIcon />
+                            {getCryptoIcon(crypto)}
                           </div>
                           <div className="flex flex-col">
-                            <div className="font-bold">{crypto.toUpperCase()}/USDT</div>
+                            <div className="font-bold">{getCryptoDisplayName(crypto)}</div>
                             <div className="text-sm text-gray-500">Via CoinGecko</div>
                           </div>
                           <div className="flex flex-col">
@@ -438,11 +450,16 @@ function App() {
                   <div className="text-[24px] font-[600]">Price History</div>
                   <div className="text-[18px]">Last 30 days</div>
                 </div>
-                <div className="text-gray-500">📈 Coming Soon: Interactive Charts</div>
+                <div className="text-gray-500 flex items-center gap-2">
+                  <TrendingUpIcon size={20} />
+                  Coming Soon: Interactive Charts
+                </div>
               </div>
               <div className="bg-white rounded-[18px] h-[400px] mt-[24px] flex items-center justify-center">
                 <div className="text-center text-gray-500">
-                  <div className="text-6xl mb-4">📊</div>
+                  <div className="mb-4">
+                    <ChartIcon size={64} />
+                  </div>
                   <div className="text-xl font-semibold">Price Charts Coming Soon</div>
                   <div className="text-sm mt-2">Interactive candlestick charts will be available here</div>
                 </div>
