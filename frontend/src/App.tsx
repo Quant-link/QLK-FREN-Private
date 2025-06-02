@@ -8,9 +8,10 @@ import {
   type CryptoPrice,
 } from "./api/cryptoApi";
 import { getCryptoIcon, getCryptoDisplayName } from "./utils/cryptoIcons";
+import { CryptoChart } from "./components/CryptoChart";
+import { MetaMaskWallet } from "./components/MetaMaskWallet";
 import {
   WalletIcon,
-  ChartIcon,
   SettingsIcon,
   HomeIcon,
   TrendingUpIcon,
@@ -41,6 +42,8 @@ function App() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
+  const [chartDays, setChartDays] = useState(7);
+  const [showWallet, setShowWallet] = useState(false);
 
   // Popular cryptocurrencies for live feed
   const popularCryptos = ["bitcoin", "ethereum", "solana", "cardano", "polkadot", "chainlink"];
@@ -198,8 +201,7 @@ function App() {
 
   // Header button handlers
   const handleWalletClick = () => {
-    console.log("Wallet clicked");
-    // Add wallet functionality here
+    setShowWallet(!showWallet);
   };
 
   const handleAnalyticsClick = () => {
@@ -215,14 +217,14 @@ function App() {
       <div className="bg-linear-to-b from-[#f1f1f5] to-[#c9d6e3] w-screen h-screen absolute z-[-1]"></div>
       <div className="overflow-y-auto h-screen">
         <div className="text-[#151F24] flex flex-col h-full">
-          <header className="shrink-0 fixed top-0 left-0 right-0">
+          <header className="shrink-0 fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm">
             <div className="container mx-auto flex items-center justify-between py-8 ">
               <div>
                 <img src="/logo.svg" alt="Quantlink" />
               </div>
               <div className="flex gap-4">
                 <button 
-                  className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  className={`w-[56px] h-[56px] rounded-full ${showWallet ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} flex items-center justify-center transition-colors`}
                   onClick={handleWalletClick}
                   title="Wallet"
                 >
@@ -245,6 +247,24 @@ function App() {
               </div>
             </div>
           </header>
+
+          {/* MetaMask Wallet Overlay */}
+          {showWallet && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="max-w-md w-full">
+                <div className="mb-4 flex justify-end">
+                  <button
+                    onClick={() => setShowWallet(false)}
+                    className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+                <MetaMaskWallet />
+              </div>
+            </div>
+          )}
+
           <div className="container mx-auto grid grid-cols-[64px_1fr] gap-8 h-full grow mt-[120px]">
             <aside className="flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
               <div className="flex flex-col gap-4">
@@ -381,7 +401,6 @@ function App() {
                         <option value="usd">US Dollar (USD)</option>
                         <option value="eur">Euro (EUR)</option>
                         <option value="gbp">British Pound (GBP)</option>
-                        <option value="try">Turkish Lira (TRY)</option>
                       </select>
                     </div>
 
@@ -532,24 +551,37 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mt-[48px]">
-                <div className="flex flex-col">
-                  <div className="text-[24px] font-[600]">Price History</div>
-                  <div className="text-[18px]">Last 30 days</div>
-                </div>
-                <div className="text-gray-500 flex items-center gap-2">
-                  <TrendingUpIcon size={20} />
-                  Coming Soon: Interactive Charts
-                </div>
-              </div>
-              <div className="bg-white rounded-[18px] h-[400px] mt-[24px] flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <div className="mb-4">
-                    <ChartIcon size={64} />
+              {/* Price Chart Section */}
+              <div className="mt-[48px]">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex flex-col">
+                    <div className="text-[24px] font-[600]">Price History</div>
+                    <div className="text-[18px] text-gray-600">
+                      {selectedCrypto.charAt(0).toUpperCase() + selectedCrypto.slice(1)} - Last {chartDays} days
+                    </div>
                   </div>
-                  <div className="text-xl font-semibold">Price Charts Coming Soon</div>
-                  <div className="text-sm mt-2">Interactive candlestick charts will be available here</div>
+                  <div className="flex gap-2">
+                    {[1, 7, 30, 90].map((days) => (
+                      <button
+                        key={days}
+                        onClick={() => setChartDays(days)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          chartDays === days
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {days === 1 ? '24H' : `${days}D`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <CryptoChart 
+                  crypto={selectedCrypto} 
+                  currency={selectedCurrency} 
+                  days={chartDays}
+                  className="mt-[24px]"
+                />
               </div>
             </main>
           </div>

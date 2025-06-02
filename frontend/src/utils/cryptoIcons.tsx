@@ -13,9 +13,6 @@ export function getCryptoIcon(cryptoName: string) {
   const normalizedName = cryptoName.toLowerCase();
   const coinId = COINGECKO_CRYPTO_MAPPING[normalizedName] || normalizedName;
   
-  // CoinGecko provides logos at different sizes: thumb (32x32), small (64x64), large (128x128)
-  const logoUrl = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`;
-  
   return (
     <CryptoLogo 
       cryptoName={normalizedName}

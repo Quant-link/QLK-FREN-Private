@@ -407,4 +407,126 @@ def get_multiple_crypto_prices(
     
     # Return whatever results we have, which might be empty or partial
     return results
+
+
+def get_crypto_historical_data(
+    crypto_id: str, vs_currency: str = "usd", days: int = 7
+) -> Dict[str, Any]:
+    """
+    Fetches historical price data for a specified cryptocurrency from the CoinGecko API.
+
+    Args:
+        crypto_id (str): The CoinGecko ID of the cryptocurrency (e.g., "bitcoin", "ethereum").
+        vs_currency (str): The currency to compare against (e.g., "usd", "eur"). Defaults to "usd".
+        days (int): Number of days to fetch data for (1, 7, 14, 30, 90, 180, 365). Defaults to 7.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - "name": Capitalized cryptocurrency name
+            - "data": List of [timestamp, price] pairs
+            - "currency": The currency of the prices
+            - "days": Number of days of data
+            - "success": Boolean indicating if the request was successful
+    """
+    result = {
+        "name": crypto_id.capitalize(),
+        "data": [],
+        "currency": vs_currency.upper(),
+        "days": days,
+        "success": False,
+    }
+
+    # CoinGecko historical data endpoint
+    url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart"
+    params = {
+        "vs_currency": vs_currency,
+        "days": days,
+        "interval": "hourly" if days <= 1 else "daily"
+    }
+
+    current_delay = INITIAL_BACKOFF_DELAY
+    last_exception = None
+
+    for attempt in range(MAX_RETRIES):
+        logger.info(
+            f"Historical data request attempt {attempt + 1} of {MAX_RETRIES} for {crypto_id} ({days} days)"
+        )
+        try:
+            response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            logger.debug(f"API Request URL: {response.url}")
+
+            if response.status_code in RETRYABLE_STATUS_CODES:
+                logger.warning(
+                    f"Retryable HTTP status {response.status_code}. Will retry if attempts remain."
+                )
+                response.raise_for_status()
+
+            response.raise_for_status()
+            data = response.json()
+
+            if "prices" in data:
+                # CoinGecko returns prices as [[timestamp, price], [timestamp, price], ...]
+                prices = data["prices"]
+                result["data"] = prices
+                result["success"] = True
+                
+                logger.info(
+                    f"Fetched {len(prices)} historical data points for {crypto_id} "
+                    f"({days} days in {vs_currency.upper()})"
+                )
+                return result
+            else:
+                logger.error(f"No price data found for {crypto_id}. Response: {data}")
+                return result
+
+        except requests.exceptions.HTTPError as http_err:
+            last_exception = http_err
+            logger.warning(
+                f"HTTP Error on attempt {attempt + 1}: {http_err} - Status Code: {response.status_code}"
+            )
+            if response.status_code not in RETRYABLE_STATUS_CODES:
+                logger.error(
+                    f"Non-retryable HTTP error occurred: {response.status_code}. Aborting retries."
+                )
+                break
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+        ) as conn_timeout_err:
+            last_exception = conn_timeout_err
+            logger.warning(
+                f"Connection/Timeout Error on attempt {attempt + 1}: {conn_timeout_err}"
+            )
+        except requests.exceptions.RequestException as req_err:
+            last_exception = req_err
+            logger.error(
+                f"Unexpected Request Error on attempt {attempt + 1}: {req_err}",
+                exc_info=True,
+            )
+            break
+        except ValueError as val_err:
+            last_exception = val_err
+            logger.error(
+                f"JSON decode error on attempt {attempt + 1}. "
+                f"Response: {response.text if 'response' in locals() else 'No response'}",
+                exc_info=True,
+            )
+            return result
+
+        if attempt < MAX_RETRIES - 1:
+            logger.info(f"Waiting {current_delay} seconds before next retry...")
+            time.sleep(current_delay)
+            current_delay *= BACKOFF_FACTOR
+        else:
+            logger.error(f"All {MAX_RETRIES} retries failed for {crypto_id} historical data.")
+            if last_exception:
+                logger.error(
+                    f"Last encountered error: {last_exception}", exc_info=last_exception
+                )
+
+    logger.error(
+        f"Failed to fetch historical data for {crypto_id} after all retries. Last error: {last_exception}",
+        exc_info=last_exception,
+    )
+    return result
  

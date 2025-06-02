@@ -27,6 +27,14 @@ export interface NarrationResponse {
   error?: string;
 }
 
+export interface HistoricalData {
+  name: string;
+  data: [number, number][]; // [timestamp, price] pairs
+  currency: string;
+  days: number;
+  success: boolean;
+}
+
 // Get single cryptocurrency price
 export const getCryptoPrice = async (
   crypto: string, 
@@ -137,6 +145,25 @@ export const getAudioFile = (fileId: string): string => {
 // Health check
 export const healthCheck = async (): Promise<{ status: string; version: string }> => {
   const response = await fetch(`${API_BASE_URL}/api/health`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+};
+
+// Get historical price data
+export const getCryptoHistoricalData = async (
+  crypto: string,
+  currency: string = 'usd',
+  days: number = 7
+): Promise<HistoricalData> => {
+  const params = new URLSearchParams({
+    crypto,
+    currency,
+    days: days.toString(),
+  });
+
+  const response = await fetch(`${API_BASE_URL}/api/crypto/historical?${params}`);
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }

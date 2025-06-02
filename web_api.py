@@ -6,7 +6,7 @@ import time
 import uuid
 from flask import Flask, request, jsonify, send_file, Response, send_from_directory
 from flask_cors import CORS
-from src.price_fetcher import get_crypto_price, get_crypto_price_with_change, get_multiple_crypto_prices
+from src.price_fetcher import get_crypto_price, get_crypto_price_with_change, get_multiple_crypto_prices, get_crypto_historical_data
 from src.narrator import narrate_text
 from src.app_config import app_settings
 
@@ -376,6 +376,39 @@ def narrate_crypto_price():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/api/crypto/historical', methods=['GET'])
+def get_historical_data():
+    """
+    Get historical price data for a cryptocurrency.
+    
+    Query parameters:
+        crypto: Cryptocurrency ID (e.g., bitcoin)
+        currency: Currency code (e.g., usd)
+        days: Number of days (1, 7, 14, 30, 90, 180, 365) - default: 7
+    """
+    try:
+        crypto_id = request.args.get('crypto', app_settings.default_crypto_id).lower()
+        currency = request.args.get('currency', app_settings.default_vs_currency).lower()
+        days = int(request.args.get('days', 7))
+        
+        # Validate days parameter
+        allowed_days = [1, 7, 14, 30, 90, 180, 365]
+        if days not in allowed_days:
+            return jsonify({
+                "success": False, 
+                "error": f"Invalid days parameter. Allowed values: {allowed_days}"
+            }), 400
+        
+        result = get_crypto_historical_data(crypto_id, currency, days)
+        return jsonify(result)
+    
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid days parameter. Must be an integer."}), 400
+    except Exception as e:
+        logger.error(f"Error in get_historical_data endpoint: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 def _cleanup_expired_files():
     """Clean up expired temporary files."""
     current_time = time.time()
@@ -439,6 +472,7 @@ if __name__ == '__main__':
     print("  POST /api/narrator/text           - Narrate custom text")
     print("  GET  /api/narrator/audio/<file_id> - Get audio file by ID")
     print("  POST /api/narrator/crypto         - Narrate cryptocurrency price")
+    print("  GET  /api/crypto/historical       - Get historical price data")
     
     # Run the Flask app
     app.run(host=args.host, port=args.port, debug=args.debug) 
