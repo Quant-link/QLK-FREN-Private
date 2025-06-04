@@ -3,9 +3,78 @@ import logging
 import time
 from typing import Dict, Any, Tuple, Optional, List
 from src.app_config import app_settings  # Import the application settings
+import json
+import os
+from datetime import datetime, timedelta
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
+
+# Cache system to reduce API calls
+class APICache:
+    def __init__(self, cache_duration_minutes=5):
+        self.cache = {}
+        self.cache_duration = timedelta(minutes=cache_duration_minutes)
+        self.cache_file = "api_cache.json"
+        self.load_cache()
+    
+    def load_cache(self):
+        """Load cache from file if exists"""
+        try:
+            if os.path.exists(self.cache_file):
+                with open(self.cache_file, 'r') as f:
+                    cache_data = json.load(f)
+                    # Convert string timestamps back to datetime objects
+                    for key, value in cache_data.items():
+                        if 'timestamp' in value:
+                            value['timestamp'] = datetime.fromisoformat(value['timestamp'])
+                    self.cache = cache_data
+        except Exception as e:
+            logger.warning(f"Failed to load cache: {e}")
+            self.cache = {}
+    
+    def save_cache(self):
+        """Save cache to file"""
+        try:
+            cache_data = {}
+            for key, value in self.cache.items():
+                cache_copy = value.copy()
+                if 'timestamp' in cache_copy:
+                    cache_copy['timestamp'] = cache_copy['timestamp'].isoformat()
+                cache_data[key] = cache_copy
+            
+            with open(self.cache_file, 'w') as f:
+                json.dump(cache_data, f)
+        except Exception as e:
+            logger.warning(f"Failed to save cache: {e}")
+    
+    def get(self, key):
+        """Get cached data if not expired"""
+        if key in self.cache:
+            cached_item = self.cache[key]
+            if datetime.now() - cached_item['timestamp'] < self.cache_duration:
+                logger.info(f"Using cached data for {key}")
+                return cached_item['data']
+            else:
+                # Remove expired item
+                del self.cache[key]
+        return None
+    
+    def set(self, key, data):
+        """Cache data with timestamp"""
+        self.cache[key] = {
+            'data': data,
+            'timestamp': datetime.now()
+        }
+        self.save_cache()
+
+# Global cache instance
+api_cache = APICache(cache_duration_minutes=3)  # 3 minute cache
+
+# Add a small delay between API calls to respect rate limits
+def _api_rate_limit_delay():
+    """Add a small delay to respect CoinGecko's rate limits"""
+    time.sleep(1.5)  # Increased from 0.5 to 1.5 seconds
 
 # Use settings from app_config if available, otherwise fall back to hardcoded (less ideal)
 COINGECKO_API_URL = (
@@ -13,13 +82,13 @@ COINGECKO_API_URL = (
     if app_settings
     else "https://api.coingecko.com/api/v3/simple/price"
 )
-MAX_RETRIES = app_settings.retry_max_retries if app_settings else 3
-INITIAL_BACKOFF_DELAY = app_settings.retry_initial_backoff if app_settings else 1
-BACKOFF_FACTOR = app_settings.retry_backoff_factor if app_settings else 2
+MAX_RETRIES = app_settings.retry_max_retries if app_settings else 2  # Reduced retries
+INITIAL_BACKOFF_DELAY = app_settings.retry_initial_backoff if app_settings else 5  # Increased from 3 to 5
+BACKOFF_FACTOR = app_settings.retry_backoff_factor if app_settings else 4  # Increased from 3 to 4
 RETRYABLE_STATUS_CODES = (
     app_settings.retryable_status_codes if app_settings else {429, 500, 502, 503, 504}
 )
-REQUEST_TIMEOUT = app_settings.api_request_timeout if app_settings else 10
+REQUEST_TIMEOUT = app_settings.api_request_timeout if app_settings else 20  # Increased from 15 to 20
 
 
 def get_crypto_price(
@@ -38,6 +107,12 @@ def get_crypto_price(
                                          and its price. Returns (None, None) if an error occurs
                                          or the price cannot be found after retries.
     """
+    # Check cache first
+    cache_key = f"price_{crypto_id}_{vs_currency}"
+    cached_result = api_cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
     if not app_settings:
         logger.error(
             "App settings not loaded. Price fetching may use defaults & might not function."
@@ -57,6 +132,9 @@ def get_crypto_price(
             f"API request attempt {attempt + 1} of {MAX_RETRIES} for {crypto_id}"
         )
         try:
+            # Add rate limiting delay before API call
+            _api_rate_limit_delay()
+            
             response = requests.get(
                 COINGECKO_API_URL, params=params, timeout=REQUEST_TIMEOUT
             )
@@ -75,10 +153,13 @@ def get_crypto_price(
 
             if crypto_id in data and vs_currency in data[crypto_id]:
                 price = data[crypto_id][vs_currency]
+                result = (crypto_id.capitalize(), float(price))
+                # Cache the result
+                api_cache.set(cache_key, result)
                 logger.info(
                     f"Fetched {crypto_id.capitalize()}: {price} {vs_currency.upper()} (attempt {attempt + 1})"
                 )
-                return crypto_id.capitalize(), float(price)
+                return result
             else:
                 log_msg = f"Price not for '{crypto_id}' in '{vs_currency}'."
                 logger.error(f"{log_msg} Response: {data}")
@@ -86,10 +167,13 @@ def get_crypto_price(
 
         except requests.exceptions.HTTPError as http_err:
             last_exception = http_err
+            if hasattr(response, 'status_code') and response.status_code == 429:
+                logger.warning(f"Rate limited (429) - waiting longer before retry...")
+                time.sleep(current_delay * 2)  # Wait longer for rate limiting
             logger.warning(
-                f"HTTP Error on attempt {attempt + 1}: {http_err} - Status Code: {response.status_code}"
+                f"HTTP Error on attempt {attempt + 1}: {http_err} - Status Code: {response.status_code if 'response' in locals() else 'Unknown'}"
             )
-            if response.status_code not in RETRYABLE_STATUS_CODES:
+            if 'response' in locals() and response.status_code not in RETRYABLE_STATUS_CODES:
                 logger.error(
                     f"Non-retryable HTTP error occurred: {response.status_code}. Aborting retries."
                 )
@@ -204,6 +288,9 @@ def get_crypto_price_with_change(
             f"API request attempt {attempt + 1} of {MAX_RETRIES} for {crypto_id} with change data"
         )
         try:
+            # Add rate limiting delay before API call
+            _api_rate_limit_delay()
+            
             # Fetch price data
             response = requests.get(
                 COINGECKO_API_URL, params=params, timeout=REQUEST_TIMEOUT
@@ -313,6 +400,12 @@ def get_multiple_crypto_prices(
     if not crypto_ids:
         logger.warning("No cryptocurrency IDs provided to fetch")
         return {}
+    
+    # Check cache first
+    cache_key = f"multiple_prices_{','.join(sorted(crypto_ids))}_{vs_currency}_{include_change}"
+    cached_result = api_cache.get(cache_key)
+    if cached_result:
+        return cached_result
         
     # Join crypto IDs with commas for the API
     ids_param = ",".join(crypto_ids)
@@ -333,11 +426,17 @@ def get_multiple_crypto_prices(
     
     for attempt in range(MAX_RETRIES):
         try:
+            # Add rate limiting delay before API call
+            _api_rate_limit_delay()
+            
             response = requests.get(
                 COINGECKO_API_URL, params=params, timeout=REQUEST_TIMEOUT
             )
             
             if response.status_code in RETRYABLE_STATUS_CODES:
+                if response.status_code == 429:
+                    logger.warning(f"Rate limited (429) - waiting longer before retry...")
+                    time.sleep(current_delay * 2)  # Wait longer for rate limiting
                 logger.warning(
                     f"Retryable HTTP status {response.status_code}. Will retry if attempts remain."
                 )
@@ -367,7 +466,9 @@ def get_multiple_crypto_prices(
                     result["success"] = True
                 
                 results[crypto_id] = result
-                
+            
+            # Cache the result
+            api_cache.set(cache_key, results)
             logger.info(f"Successfully fetched prices for {len(results)} cryptocurrencies")
             return results
             
@@ -428,6 +529,12 @@ def get_crypto_historical_data(
             - "days": Number of days of data
             - "success": Boolean indicating if the request was successful
     """
+    # Check cache first
+    cache_key = f"historical_{crypto_id}_{vs_currency}_{days}"
+    cached_result = api_cache.get(cache_key)
+    if cached_result:
+        return cached_result
+        
     result = {
         "name": crypto_id.capitalize(),
         "data": [],
@@ -452,10 +559,16 @@ def get_crypto_historical_data(
             f"Historical data request attempt {attempt + 1} of {MAX_RETRIES} for {crypto_id} ({days} days)"
         )
         try:
+            # Add rate limiting delay before API call
+            _api_rate_limit_delay()
+            
             response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
             logger.debug(f"API Request URL: {response.url}")
 
             if response.status_code in RETRYABLE_STATUS_CODES:
+                if response.status_code == 429:
+                    logger.warning(f"Rate limited (429) - waiting much longer before retry...")
+                    time.sleep(current_delay * 3)  # Wait even longer for historical data rate limiting
                 logger.warning(
                     f"Retryable HTTP status {response.status_code}. Will retry if attempts remain."
                 )
@@ -470,6 +583,9 @@ def get_crypto_historical_data(
                 result["data"] = prices
                 result["success"] = True
                 
+                # Cache the result for longer since historical data doesn't change as often
+                api_cache.set(cache_key, result)
+                
                 logger.info(
                     f"Fetched {len(prices)} historical data points for {crypto_id} "
                     f"({days} days in {vs_currency.upper()})"
@@ -482,9 +598,9 @@ def get_crypto_historical_data(
         except requests.exceptions.HTTPError as http_err:
             last_exception = http_err
             logger.warning(
-                f"HTTP Error on attempt {attempt + 1}: {http_err} - Status Code: {response.status_code}"
+                f"HTTP Error on attempt {attempt + 1}: {http_err} - Status Code: {response.status_code if 'response' in locals() else 'Unknown'}"
             )
-            if response.status_code not in RETRYABLE_STATUS_CODES:
+            if 'response' in locals() and response.status_code not in RETRYABLE_STATUS_CODES:
                 logger.error(
                     f"Non-retryable HTTP error occurred: {response.status_code}. Aborting retries."
                 )

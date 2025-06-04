@@ -63,7 +63,7 @@ function App() {
     checkHealth();
   }, []);
 
-  // Fetch live prices every 30 seconds
+  // Fetch live prices every 2 minutes (increased from 60 seconds to further reduce API calls)
   useEffect(() => {
     const fetchLivePrices = async () => {
       try {
@@ -73,14 +73,16 @@ function App() {
         }
       } catch (error) {
         console.error("Failed to fetch live prices:", error);
+        // Don't show alerts for background live price updates to avoid annoying users
+        // Just log the error and continue with cached data
       }
     };
 
     // Initial fetch
     fetchLivePrices();
 
-    // Set up interval for live updates
-    const interval = setInterval(fetchLivePrices, 30000);
+    // Set up interval for live updates (increased to 2 minutes)
+    const interval = setInterval(fetchLivePrices, 120000);
 
     return () => clearInterval(interval);
   }, []);
@@ -99,7 +101,12 @@ function App() {
       setCurrentPrice(price);
     } catch (error) {
       console.error("Failed to fetch price:", error);
-      alert("Failed to fetch price. Please try again.");
+      // Check if it's a rate limiting error
+      if (error instanceof Error && error.message.includes('429')) {
+        alert("API is receiving too many requests. Please wait a few seconds and try again.");
+      } else {
+        alert("Failed to fetch price. Please try again.");
+      }
     }
     setIsLoading(false);
   };
@@ -138,7 +145,11 @@ function App() {
       }
     } catch (error) {
       console.error("Failed to generate narration:", error);
-      alert("Failed to generate narration. Please try again.");
+      if (error instanceof Error && error.message.includes('429')) {
+        alert("API is receiving too many requests. Please wait a few seconds and try again.");
+      } else {
+        alert("Failed to generate narration. Please try again.");
+      }
     }
     setIsLoading(false);
   };
@@ -217,28 +228,28 @@ function App() {
       <div className="bg-linear-to-b from-[#f1f1f5] to-[#c9d6e3] w-screen h-screen absolute z-[-1]"></div>
       <div className="overflow-y-auto h-screen">
         <div className="text-[#151F24] flex flex-col h-full">
-          <header className="shrink-0 fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm">
+          <header className="shrink-0 fixed top-0 left-0 right-0 z-50 bg-[#e8eef5] backdrop-blur-sm border-b border-white/30 shadow-sm">
             <div className="container mx-auto flex items-center justify-between py-8 ">
-              <div>
+              <div className="transform hover:scale-105 transition-transform duration-300">
                 <img src="/logo.svg" alt="Quantlink" />
               </div>
               <div className="flex gap-4">
                 <button 
-                  className={`w-[56px] h-[56px] rounded-full ${showWallet ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} flex items-center justify-center transition-colors`}
+                  className={`w-[56px] h-[56px] rounded-full ${showWallet ? 'bg-blue-500 text-white scale-105' : 'bg-white/90 hover:bg-white hover:scale-110'} flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl`}
                   onClick={handleWalletClick}
                   title="Wallet"
                 >
                   <WalletIcon size={24} />
                 </button>
                 <button 
-                  className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  className="w-[56px] h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
                   onClick={handleAnalyticsClick}
                   title="Analytics"
                 >
                   <AnalyticsIcon size={24} />
                 </button>
                 <button 
-                  className="w-[56px] h-[56px] rounded-full bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  className="w-[56px] h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
                   onClick={handleSettingsClick}
                   title="Settings"
                 >
@@ -269,28 +280,28 @@ function App() {
             <aside className="flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
               <div className="flex flex-col gap-4">
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'home' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'home' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('home')}
                   title="Home"
                 >
                   <HomeIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'trends' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'trends' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('trends')}
                   title="Market Trends"
                 >
                   <TrendingUpIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'voice' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'voice' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('voice')}
                   title="Voice Controls"
                 >
                   <VolumeIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'analytics' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'analytics' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('analytics')}
                   title="Analytics Dashboard"
                 >
@@ -299,14 +310,14 @@ function App() {
               </div>
               <div className="flex flex-col gap-4">
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'help' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'help' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('help')}
                   title="Help & Support"
                 >
                   <HelpIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'settings' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'} transition-colors flex items-center justify-center`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'settings' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('settings')}
                   title="Settings"
                 >
@@ -336,7 +347,7 @@ function App() {
               </div>
 
               <div className="grid grid-cols-2 mt-[48px] gap-[24px]">
-                <div className="bg-white rounded-[18px] px-[24px] py-[20px] font-space-grotesk">
+                <div className="bg-white rounded-[18px] px-[24px] py-[20px] font-space-grotesk shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                   <div className="flex items-center gap-[10px] mb-4">
                     <svg
                       width="25"
@@ -344,6 +355,7 @@ function App() {
                       viewBox="0 0 25 25"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
+                      className="transform hover:rotate-12 transition-transform duration-300"
                     >
                       <path
                         d="M3.58008 21.2371L3.58008 17.2371H21.5801V21.2371H3.58008Z"
@@ -371,12 +383,12 @@ function App() {
                   </div>
 
                   <div className="space-y-4">
-                    <div>
+                    <div className="transform hover:scale-105 transition-transform duration-200">
                       <div className="text-[10px] font-[700] text-[#9D9D9E] mb-2">
                         Select Cryptocurrency
                       </div>
                       <select 
-                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none"
+                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200"
                         value={selectedCrypto}
                         onChange={(e) => setSelectedCrypto(e.target.value)}
                       >
@@ -389,12 +401,12 @@ function App() {
                       </select>
                     </div>
 
-                    <div>
+                    <div className="transform hover:scale-105 transition-transform duration-200">
                       <div className="text-[10px] font-[700] text-[#9D9D9E] mb-2">
                         Currency
                       </div>
                       <select 
-                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none"
+                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200"
                         value={selectedCurrency}
                         onChange={(e) => setSelectedCurrency(e.target.value)}
                       >
@@ -409,8 +421,8 @@ function App() {
                         Price Change Options
                       </div>
                       <div className="flex gap-4">
-                        <div className="bg-gray-100 rounded-[18px] px-[16px] py-[12px] flex flex-col gap-4">
-                          <label className="block">
+                        <div className="bg-gray-100 rounded-[18px] px-[16px] py-[12px] flex flex-col gap-4 hover:bg-gray-50 transition-colors duration-200">
+                          <label className="block cursor-pointer group">
                             <input 
                               type="checkbox" 
                               checked={priceChangeOptions.change24h}
@@ -418,12 +430,13 @@ function App() {
                                 ...prev, 
                                 change24h: e.target.checked 
                               }))}
+                              className="transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="ml-2 text-[14px] font-[700]">
+                            <span className="ml-2 text-[14px] font-[700] group-hover:text-blue-600 transition-colors duration-200">
                               24h Price change
                             </span>
                           </label>
-                          <label className="block">
+                          <label className="block cursor-pointer group">
                             <input 
                               type="checkbox" 
                               checked={priceChangeOptions.change7d}
@@ -431,12 +444,13 @@ function App() {
                                 ...prev, 
                                 change7d: e.target.checked 
                               }))}
+                              className="transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="ml-2 text-[14px] font-[700]">
+                            <span className="ml-2 text-[14px] font-[700] group-hover:text-blue-600 transition-colors duration-200">
                               7d Price change
                             </span>
                           </label>
-                          <label className="block">
+                          <label className="block cursor-pointer group">
                             <input 
                               type="checkbox" 
                               checked={priceChangeOptions.change30d}
@@ -444,8 +458,9 @@ function App() {
                                 ...prev, 
                                 change30d: e.target.checked 
                               }))}
+                              className="transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="ml-2 text-[14px] font-[700]">
+                            <span className="ml-2 text-[14px] font-[700] group-hover:text-blue-600 transition-colors duration-200">
                               30d Price change
                             </span>
                           </label>
@@ -453,18 +468,36 @@ function App() {
 
                         <div className="flex flex-col justify-between">
                           <button 
-                            className="w-[140px] h-[60px] border border-gray-300 rounded-[18px] hover:bg-gray-50 transition-colors font-[600] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`w-[140px] h-[60px] border border-gray-300 rounded-[18px] transition-all duration-300 font-[600] transform hover:scale-105 hover:shadow-lg ${
+                              isLoading ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'hover:bg-blue-50 hover:border-blue-300'
+                            }`}
                             onClick={handleFetchPrice}
                             disabled={isLoading}
                           >
-                            {isLoading ? "Loading..." : "Fetch Price"}
+                            {isLoading ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                Loading...
+                              </div>
+                            ) : (
+                              "Fetch Price"
+                            )}
                           </button>
                           <button 
-                            className="w-[140px] h-[60px] border border-gray-300 rounded-[18px] hover:bg-gray-50 transition-colors font-[600] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`w-[140px] h-[60px] border border-gray-300 rounded-[18px] transition-all duration-300 font-[600] transform hover:scale-105 hover:shadow-lg ${
+                              isLoading || !currentPrice ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'hover:bg-green-50 hover:border-green-300'
+                            }`}
                             onClick={handleNarratePrice}
                             disabled={isLoading || !currentPrice}
                           >
-                            {isLoading ? "Loading..." : "Narrate Price"}
+                            {isLoading ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                                Loading...
+                              </div>
+                            ) : (
+                              "Narrate Price"
+                            )}
                           </button>
                         </div>
                       </div>
@@ -472,37 +505,39 @@ function App() {
 
                     {/* Current Price Display */}
                     {currentPrice && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                        <h3 className="font-bold text-lg">{currentPrice.name}</h3>
-                        <p className="text-2xl font-bold text-blue-600">
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg">
+                        <h3 className="font-bold text-lg animate-fade-in">{currentPrice.name}</h3>
+                        <p className="text-2xl font-bold text-blue-600 animate-pulse">
                           {formatPrice(currentPrice.current_price)}
                         </p>
                         {currentPrice.price_change_24h !== undefined && (
-                          <p className={`text-sm ${currentPrice.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <p className={`text-sm transition-all duration-300 ${currentPrice.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             24h: {formatPercentChange(currentPrice.price_change_24h)}
                           </p>
                         )}
                         {currentPrice.price_change_7d !== undefined && (
-                          <p className={`text-sm ${currentPrice.price_change_7d >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <p className={`text-sm transition-all duration-300 ${currentPrice.price_change_7d >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             7d: {formatPercentChange(currentPrice.price_change_7d)}
                           </p>
                         )}
                         {currentPrice.price_change_30d !== undefined && (
-                          <p className={`text-sm ${currentPrice.price_change_30d >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <p className={`text-sm transition-all duration-300 ${currentPrice.price_change_30d >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             30d: {formatPercentChange(currentPrice.price_change_30d)}
                           </p>
                         )}
                         
                         {/* Audio Control */}
                         {audioUrl && (
-                          <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                          <div className="mt-4 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 transform hover:scale-105 transition-all duration-300">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 <span className="text-sm font-medium text-gray-700">Audio Ready</span>
                               </div>
                               <button
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+                                className={`px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium shadow-md hover:shadow-lg ${
+                                  isPlaying ? 'animate-pulse' : ''
+                                }`}
                                 onClick={handlePlayAudio}
                                 disabled={isPlaying}
                               >
@@ -518,16 +553,22 @@ function App() {
                 </div>
 
                 <div className="self-end">
-                  <div className="font-[600] mb-[24px]">
+                  <div className="font-[600] mb-[24px] transform hover:scale-105 transition-transform duration-300">
                     <div className="text-[25px] leading-8">Live</div>
-                    <div className="text-[40px] leading-8">Price Feed</div>
+                    <div className="text-[40px] leading-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Price Feed</div>
                   </div>
                   <div className="grid grid-cols-2 grid-rows-3 gap-[12px]">
-                    {popularCryptos.map((crypto) => {
+                    {popularCryptos.map((crypto, index) => {
                       const priceData = livePrices[crypto];
                       return (
-                        <div key={crypto} className="flex items-center gap-6 bg-white rounded-[18px] px-[24px] py-[20px] font-space-grotesk">
-                          <div>
+                        <div 
+                          key={crypto} 
+                          className="flex items-center gap-6 bg-white rounded-[18px] px-[24px] py-[20px] font-space-grotesk shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
+                          style={{
+                            animationDelay: `${index * 100}ms`
+                          }}
+                        >
+                          <div className="transform hover:scale-110 transition-transform duration-300">
                             {getCryptoIcon(crypto)}
                           </div>
                           <div className="flex flex-col">
@@ -536,10 +577,17 @@ function App() {
                           </div>
                           <div className="flex flex-col">
                             <div className="font-bold">
-                              {priceData ? formatPrice(priceData.current_price) : "Loading..."}
+                              {priceData ? (
+                                <span className="animate-fade-in">{formatPrice(priceData.current_price)}</span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                  <span className="text-gray-400">Loading...</span>
+                                </div>
+                              )}
                             </div>
                             {priceData?.price_change_24h !== undefined && (
-                              <div className={`text-sm ${priceData.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <div className={`text-sm transition-all duration-500 ${priceData.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {formatPercentChange(priceData.price_change_24h)}
                               </div>
                             )}
@@ -552,11 +600,11 @@ function App() {
               </div>
 
               {/* Price Chart Section */}
-              <div className="mt-[48px]">
+              <div className="mt-[48px] transform hover:scale-[1.01] transition-transform duration-500">
                 <div className="flex justify-between items-center mb-6">
                   <div className="flex flex-col">
-                    <div className="text-[24px] font-[600]">Price History</div>
-                    <div className="text-[18px] text-gray-600">
+                    <div className="text-[24px] font-[600] bg-gradient-to-r from-gray-700 to-gray-900 bg-clip-text text-transparent">Price History</div>
+                    <div className="text-[18px] text-gray-600 animate-fade-in">
                       {selectedCrypto.charAt(0).toUpperCase() + selectedCrypto.slice(1)} - Last {chartDays} days
                     </div>
                   </div>
@@ -565,10 +613,10 @@ function App() {
                       <button
                         key={days}
                         onClick={() => setChartDays(days)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg ${
                           chartDays === days
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white scale-105 shadow-lg'
+                            : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'
                         }`}
                       >
                         {days === 1 ? '24H' : `${days}D`}
@@ -576,12 +624,14 @@ function App() {
                     ))}
                   </div>
                 </div>
-                <CryptoChart 
-                  crypto={selectedCrypto} 
-                  currency={selectedCurrency} 
-                  days={chartDays}
-                  className="mt-[24px]"
-                />
+                <div className="transform hover:scale-[1.02] transition-all duration-300">
+                  <CryptoChart 
+                    crypto={selectedCrypto} 
+                    currency={selectedCurrency} 
+                    days={chartDays}
+                    className="mt-[24px] shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                  />
+                </div>
               </div>
             </main>
           </div>
