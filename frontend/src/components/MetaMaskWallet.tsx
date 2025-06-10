@@ -83,7 +83,7 @@ export function MetaMaskWallet() {
           <button
             onClick={connect}
             disabled={isConnecting}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#4cafd8] text-white rounded-lg hover:bg-[#3a9ec6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isConnecting ? (
               <>

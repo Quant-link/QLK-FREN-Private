@@ -40,8 +40,8 @@ const MobileNav: React.FC<MobileNavProps> = ({ activeSection, onNavigate }) => {
               className={
                 `flex flex-col items-center justify-center text-xs font-medium transition-all duration-200 min-w-[48px] ` +
                 (activeSection === id
-                  ? "text-blue-600 scale-110"
-                  : "text-gray-600 hover:text-blue-500 hover:scale-105")
+                  ? "text-[#4cafd8] scale-110"
+                  : "text-gray-600 hover:text-[#4cafd8] hover:scale-105")
               }
             >
               <Icon size={22} />

@@ -236,21 +236,21 @@ function App() {
               </div>
               <div className="flex gap-2 md:gap-4">
                 <button 
-                  className={`w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full ${showWallet ? 'bg-blue-500 text-white scale-105' : 'bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110'} flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl`}
+                  className={`w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full ${showWallet ? 'bg-[#4cafd8] text-white scale-105' : 'bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110'} flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl`}
                   onClick={handleWalletClick}
                   title="Wallet"
                 >
                   <WalletIcon size={24} />
                 </button>
                 <button 
-                  className="w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+                  className="w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl text-[#4cafd8]"
                   onClick={handleAnalyticsClick}
                   title="Analytics"
                 >
                   <AnalyticsIcon size={24} />
                 </button>
                 <button 
-                  className="w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+                  className="w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl text-[#4cafd8]"
                   onClick={handleSettingsClick}
                   title="Settings"
                 >
@@ -281,28 +281,28 @@ function App() {
             <aside className="hidden md:flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
               <div className="flex flex-col gap-4">
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'home' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'home' ? 'bg-[#4cafd8] text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('home')}
                   title="Home"
                 >
                   <HomeIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'trends' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'trends' ? 'bg-[#4cafd8] text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('trends')}
                   title="Market Trends"
                 >
                   <TrendingUpIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'voice' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'voice' ? 'bg-[#4cafd8] text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('voice')}
                   title="Voice Controls"
                 >
                   <VolumeIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'analytics' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'analytics' ? 'bg-[#4cafd8] text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('analytics')}
                   title="Analytics Dashboard"
                 >
@@ -311,14 +311,14 @@ function App() {
               </div>
               <div className="flex flex-col gap-4">
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'help' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'help' ? 'bg-[#4cafd8] text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('help')}
                   title="Help & Support"
                 >
                   <HelpIcon size={28} />
                 </button>
                 <button 
-                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'settings' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
+                  className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'settings' ? 'bg-[#4cafd8] text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
                   onClick={() => handleNavigation('settings')}
                   title="Settings"
                 >
@@ -389,7 +389,7 @@ function App() {
                         Select Cryptocurrency
                       </div>
                       <select 
-                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200"
+                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none focus:ring-2 focus:ring-[#4cafd8] transition-all duration-200"
                         value={selectedCrypto}
                         onChange={(e) => setSelectedCrypto(e.target.value)}
                       >
@@ -407,7 +407,7 @@ function App() {
                         Currency
                       </div>
                       <select 
-                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200"
+                        className="bg-[#4DACE13B] py-[12px] px-[28px] rounded-[18px] w-full font-[700] border-none outline-none focus:ring-2 focus:ring-[#4cafd8] transition-all duration-200"
                         value={selectedCurrency}
                         onChange={(e) => setSelectedCurrency(e.target.value)}
                       >
@@ -433,7 +433,7 @@ function App() {
                               }))}
                               className="transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="ml-2 text-[14px] font-[700] group-hover:text-blue-600 transition-colors duration-200">
+                            <span className="ml-2 text-[14px] font-[700] group-hover:text-[#4cafd8] transition-colors duration-200">
                               24h Price change
                             </span>
                           </label>
@@ -447,7 +447,7 @@ function App() {
                               }))}
                               className="transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="ml-2 text-[14px] font-[700] group-hover:text-blue-600 transition-colors duration-200">
+                            <span className="ml-2 text-[14px] font-[700] group-hover:text-[#4cafd8] transition-colors duration-200">
                               7d Price change
                             </span>
                           </label>
@@ -461,7 +461,7 @@ function App() {
                               }))}
                               className="transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="ml-2 text-[14px] font-[700] group-hover:text-blue-600 transition-colors duration-200">
+                            <span className="ml-2 text-[14px] font-[700] group-hover:text-[#4cafd8] transition-colors duration-200">
                               30d Price change
                             </span>
                           </label>
@@ -470,14 +470,14 @@ function App() {
                         <div className="flex flex-col justify-between">
                           <button 
                             className={`w-[140px] h-[60px] border border-gray-300 rounded-[18px] transition-all duration-300 font-[600] transform hover:scale-105 hover:shadow-lg ${
-                              isLoading ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'hover:bg-blue-50 hover:border-blue-300'
+                              isLoading ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'hover:bg-[#e0f7fd] hover:border-[#4cafd8]'
                             }`}
                             onClick={handleFetchPrice}
                             disabled={isLoading}
                           >
                             {isLoading ? (
                               <div className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="w-4 h-4 border-2 border-[#4cafd8] border-t-transparent rounded-full animate-spin"></div>
                                 Loading...
                               </div>
                             ) : (
@@ -486,14 +486,14 @@ function App() {
                           </button>
                           <button 
                             className={`w-[140px] h-[60px] border border-gray-300 rounded-[18px] transition-all duration-300 font-[600] transform hover:scale-105 hover:shadow-lg ${
-                              isLoading || !currentPrice ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'hover:bg-green-50 hover:border-green-300'
+                              isLoading || !currentPrice ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'hover:bg-[#e0f7fd] hover:border-[#4cafd8]'
                             }`}
                             onClick={handleNarratePrice}
                             disabled={isLoading || !currentPrice}
                           >
                             {isLoading ? (
                               <div className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="w-4 h-4 border-2 border-[#4cafd8] border-t-transparent rounded-full animate-spin"></div>
                                 Loading...
                               </div>
                             ) : (
@@ -506,9 +506,9 @@ function App() {
 
                     {/* Current Price Display */}
                     {currentPrice && (
-                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg">
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-[#4cafd8]/30 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg">
                         <h3 className="font-bold text-lg animate-fade-in">{currentPrice.name}</h3>
-                        <p className="text-2xl font-bold text-blue-600 animate-pulse">
+                        <p className="text-2xl font-bold text-[#4cafd8] animate-pulse">
                           {formatPrice(currentPrice.current_price)}
                         </p>
                         {currentPrice.price_change_24h !== undefined && (
@@ -536,7 +536,7 @@ function App() {
                                 <span className="text-sm font-medium text-gray-700">Audio Ready</span>
                               </div>
                               <button
-                                className={`px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium shadow-md hover:shadow-lg ${
+                                className={`px-4 py-2 bg-gradient-to-r from-[#4cafd8] to-[#3a9ec6] text-white rounded-lg hover:from-[#3a9ec6] hover:to-[#347fa3] transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium shadow-md hover:shadow-lg ${
                                   isPlaying ? 'animate-pulse' : ''
                                 }`}
                                 onClick={handlePlayAudio}
@@ -556,7 +556,7 @@ function App() {
                 <div className="self-end">
                   <div className="font-[600] mb-[24px] transform hover:scale-105 transition-transform duration-300">
                     <div className="text-[25px] leading-8">Live</div>
-                    <div className="text-[40px] leading-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Price Feed</div>
+                    <div className="text-[40px] leading-8 font-bold text-[#4cafd8]">Price Feed</div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-rows-3 gap-[12px]">
                     {popularCryptos.map((crypto, index) => {
@@ -582,7 +582,7 @@ function App() {
                                 <span className="animate-fade-in">{formatPrice(priceData.current_price)}</span>
                               ) : (
                                 <div className="flex items-center gap-2">
-                                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                  <div className="w-4 h-4 border-2 border-[#4cafd8] border-t-transparent rounded-full animate-spin"></div>
                                   <span className="text-gray-400">Loading...</span>
                                 </div>
                               )}
@@ -616,8 +616,8 @@ function App() {
                         onClick={() => setChartDays(days)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg ${
                           chartDays === days
-                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white scale-105 shadow-lg'
-                            : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'
+                            ? 'bg-gradient-to-r from-[#4cafd8] to-[#3a9ec6] text-white scale-105 shadow-lg'
+                            : 'bg-white text-gray-700 hover:bg-[#e0f7fd] hover:text-[#4cafd8] border border-gray-200'
                         }`}
                       >
                         {days === 1 ? '24H' : `${days}D`}
