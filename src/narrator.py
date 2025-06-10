@@ -9,6 +9,7 @@ import hashlib
 import time
 from typing import Dict, Tuple, Optional, List, Any, Union
 from src.app_config import app_settings  # Import the application settings
+from src.elevenlabs_tts import is_elevenlabs_available, generate_elevenlabs_speech
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -345,6 +346,76 @@ def narrate_price_with_change(
     )
 
 
+def generate_narration_file(
+    text_to_narrate: str,
+    output_filepath: str,
+    lang: str = "en",
+    slow: bool = False,
+    force_new: bool = False,
+) -> bool:
+    """
+    Generates a narration audio file without playing it.
+    Uses ElevenLabs if available, otherwise falls back to gTTS.
+
+    Args:
+        text_to_narrate (str): The text to narrate.
+        output_filepath (str): The path to save the generated audio file.
+        lang (str): The language for narration (used by gTTS fallback).
+        slow (bool): Whether to narrate slowly (used by gTTS fallback).
+        force_new (bool): Force creation of a new file even if cached.
+
+    Returns:
+        bool: True if the audio file was generated successfully, False otherwise.
+    """
+    logger.info(f"Generating narration file for: {text_to_narrate}")
+
+    # Check cache first if not forcing new narration
+    if not force_new:
+        cached_file = get_cached_narration(text_to_narrate, lang, slow)
+        if cached_file and os.path.exists(cached_file):
+            # If a cached file exists, we can just copy it to the desired output path
+            try:
+                import shutil
+                shutil.copy(cached_file, output_filepath)
+                logger.debug(f"Copied cached narration to {output_filepath}")
+                return True
+            except Exception as e:
+                logger.warning(f"Could not copy cached file: {e}. Generating new file.")
+
+    try:
+        # Try ElevenLabs first if available
+        if is_elevenlabs_available():
+            logger.info("Using ElevenLabs TTS for file generation.")
+            audio_file_path = generate_elevenlabs_speech(text_to_narrate, output_filepath)
+            if audio_file_path:
+                # Generation was successful, update cache
+                cache_key = _generate_cache_key(text_to_narrate, lang, slow)
+                _narration_cache[cache_key] = (time.time(), output_filepath)
+                return True
+            else:
+                logger.warning("ElevenLabs TTS failed, falling back to gTTS.")
+                # Fall through to gTTS by not returning
+    
+    except Exception as elevenlabs_error:
+        logger.warning(f"ElevenLabs generation failed with error: {elevenlabs_error}. Falling back to gTTS.")
+
+    # Fallback to gTTS
+    try:
+        logger.info(f"Using gTTS fallback to generate file with lang: '{lang}', slow: {slow}")
+        tts = gTTS(text=text_to_narrate, lang=lang, slow=slow)
+        tts.save(output_filepath)
+        
+        # Save to cache
+        cache_key = _generate_cache_key(text_to_narrate, lang, slow)
+        _narration_cache[cache_key] = (time.time(), output_filepath)
+        
+        logger.debug(f"gTTS audio saved to {output_filepath}")
+        return True
+    except Exception as gtts_error:
+        logger.error(f"gTTS fallback also failed: {gtts_error}", exc_info=True)
+        return False
+
+
 def narrate_text(
     text_to_narrate: str,
     lang: str = "en",
@@ -353,12 +424,12 @@ def narrate_text(
     keep_on_error: bool = False,
 ) -> bool:
     """
-    General-purpose function to narrate any text using gTTS.
+    General-purpose function to narrate any text using ElevenLabs or gTTS as fallback.
     
     Args:
         text_to_narrate (str): The text to narrate
-        lang (str): The language for narration
-        slow (bool): Whether to narrate slowly
+        lang (str): The language for narration (only used for gTTS fallback)
+        slow (bool): Whether to narrate slowly (only used for gTTS fallback)
         force_new (bool): Force creation of new narration even if cached version exists
         keep_on_error (bool): Whether to keep the audio file if playback fails
         
@@ -391,30 +462,51 @@ def narrate_text(
     playback_successful = False
     
     try:
-        logger.info(f"Narrating with language: '{lang}', slow: {slow}")
-        tts = gTTS(
-            text=text_to_narrate, lang=lang, slow=slow
-        )
-        logger.debug(f"Saving TTS audio to {current_temp_audio_file}")
-        tts.save(current_temp_audio_file)
-        audio_file_created = True
-        
-        # Save to cache
-        cache_key = _generate_cache_key(text_to_narrate, lang, slow)
-        _narration_cache[cache_key] = (time.time(), current_temp_audio_file)
-        
-        logger.debug(f"Playing audio file: {current_temp_audio_file}")
-        playback_successful = play_audio(current_temp_audio_file)
-            
-        if playback_successful:
-            logger.info("Narration played successfully")
+        # Try ElevenLabs first if available
+        if is_elevenlabs_available():
+            logger.info("Using ElevenLabs TTS for narration")
+            audio_file_path = generate_elevenlabs_speech(text_to_narrate, current_temp_audio_file)
+            if audio_file_path:
+                audio_file_created = True
+                current_temp_audio_file = audio_file_path
+            else:
+                logger.warning("ElevenLabs TTS failed, falling back to gTTS")
+                raise Exception("ElevenLabs generation failed")
         else:
-            # If audio file was created but playback failed, inform the user about the file location
-            logger.error(f"Could not play audio. File saved at: {os.path.abspath(current_temp_audio_file)}")
-            print(f"Audio could not be played. File saved at: {os.path.abspath(current_temp_audio_file)}")
+            logger.info("ElevenLabs not available, using gTTS")
+            raise Exception("ElevenLabs not available")
             
+    except Exception as elevenlabs_error:
+        # Fallback to gTTS
+        try:
+            logger.info(f"Using gTTS fallback with language: '{lang}', slow: {slow}")
+            tts = gTTS(
+                text=text_to_narrate, lang=lang, slow=slow
+            )
+            logger.debug(f"Saving gTTS audio to {current_temp_audio_file}")
+            tts.save(current_temp_audio_file)
+            audio_file_created = True
+        except Exception as gtts_error:
+            logger.error(f"Both ElevenLabs and gTTS failed. ElevenLabs: {elevenlabs_error}, gTTS: {gtts_error}")
+            return False
+    
+    try:
+        if audio_file_created:
+            # Save to cache
+            cache_key = _generate_cache_key(text_to_narrate, lang, slow)
+            _narration_cache[cache_key] = (time.time(), current_temp_audio_file)
+            
+            logger.debug(f"Playing audio file: {current_temp_audio_file}")
+            playback_successful = play_audio(current_temp_audio_file)
+                
+            if playback_successful:
+                logger.info("Narration played successfully")
+            else:
+                logger.error(f"Could not play audio. File saved at: {os.path.abspath(current_temp_audio_file)}")
+                print(f"Audio could not be played. File saved at: {os.path.abspath(current_temp_audio_file)}")
+                
     except Exception as e:
-        logger.error(f"An error occurred during narration: {e}", exc_info=True)
+        logger.error(f"An error occurred during audio playback: {e}", exc_info=True)
         return False
     finally:
         # Only attempt to delete the file if:

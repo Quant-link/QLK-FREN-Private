@@ -134,6 +134,32 @@ class AppConfig:
             "Logging", "LOG_LEVEL", fallback="INFO"
         ).upper()
         
+        # ElevenLabs Settings
+        self.elevenlabs_enabled = self.config.getboolean(
+            "ElevenLabs", "ENABLED", fallback=True
+        )
+        self.elevenlabs_api_key = self.config.get(
+            "ElevenLabs", "API_KEY", fallback="your_api_key_here"
+        )
+        self.elevenlabs_voice_id = self.config.get(
+            "ElevenLabs", "VOICE_ID", fallback="21m00Tcm4TlvDq8ikWAM"
+        )
+        self.elevenlabs_model_id = self.config.get(
+            "ElevenLabs", "MODEL_ID", fallback="eleven_multilingual_v2"
+        )
+        self.elevenlabs_stability = self.config.getfloat(
+            "ElevenLabs", "STABILITY", fallback=0.5
+        )
+        self.elevenlabs_similarity_boost = self.config.getfloat(
+            "ElevenLabs", "SIMILARITY_BOOST", fallback=0.8
+        )
+        self.elevenlabs_style = self.config.getfloat(
+            "ElevenLabs", "STYLE", fallback=0.0
+        )
+        self.elevenlabs_use_speaker_boost = self.config.getboolean(
+            "ElevenLabs", "USE_SPEAKER_BOOST", fallback=True
+        )
+        
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the configuration to a dictionary for easy serialization/deserialization.
@@ -210,7 +236,7 @@ class AppConfig:
     def _update_config_from_attributes(self):
         """Update the ConfigParser instance with the current attribute values."""
         # Ensure all required sections exist
-        for section in ["API", "Retry", "Defaults", "Narrator", "Logging", "Cache", "BatchNarration"]:
+        for section in ["API", "Retry", "Defaults", "Narrator", "Logging", "Cache", "BatchNarration", "ElevenLabs"]:
             if not self.config.has_section(section):
                 self.config.add_section(section)
                 
@@ -252,6 +278,16 @@ class AppConfig:
         # Logging Settings
         self.config.set("Logging", "TEMP_AUDIO_FILE", str(self.temp_audio_file))
         self.config.set("Logging", "LOG_LEVEL", str(self.log_level))
+        
+        # ElevenLabs Settings
+        self.config.set("ElevenLabs", "ENABLED", str(self.elevenlabs_enabled))
+        self.config.set("ElevenLabs", "API_KEY", str(self.elevenlabs_api_key))
+        self.config.set("ElevenLabs", "VOICE_ID", str(self.elevenlabs_voice_id))
+        self.config.set("ElevenLabs", "MODEL_ID", str(self.elevenlabs_model_id))
+        self.config.set("ElevenLabs", "STABILITY", str(self.elevenlabs_stability))
+        self.config.set("ElevenLabs", "SIMILARITY_BOOST", str(self.elevenlabs_similarity_boost))
+        self.config.set("ElevenLabs", "STYLE", str(self.elevenlabs_style))
+        self.config.set("ElevenLabs", "USE_SPEAKER_BOOST", str(self.elevenlabs_use_speaker_boost))
         
     def get_watchlist(self, max_cryptos: Optional[int] = None) -> List[str]:
         """

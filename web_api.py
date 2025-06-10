@@ -7,7 +7,7 @@ import uuid
 from flask import Flask, request, jsonify, send_file, Response, send_from_directory
 from flask_cors import CORS
 from src.price_fetcher import get_crypto_price, get_crypto_price_with_change, get_multiple_crypto_prices, get_crypto_historical_data
-from src.narrator import narrate_text
+from src.narrator import generate_narration_file
 from src.app_config import app_settings
 
 # Configure logging
@@ -154,9 +154,16 @@ def narrate_custom_text():
         
         # Generate audio without playing it
         try:
-            from gtts import gTTS
-            tts = gTTS(text=text, lang=lang, slow=slow)
-            tts.save(temp_filepath)
+            success = generate_narration_file(
+                text_to_narrate=text,
+                output_filepath=temp_filepath,
+                lang=lang,
+                slow=slow,
+                force_new=True  # Force new generation for API requests
+            )
+
+            if not success:
+                raise Exception("Narration generation failed")
             
             # Generate a unique ID for the file
             file_id = str(uuid.uuid4())
@@ -335,9 +342,16 @@ def narrate_crypto_price():
         
         # Generate audio without playing it
         try:
-            from gtts import gTTS
-            tts = gTTS(text=narration_text, lang=lang, slow=slow)
-            tts.save(temp_filepath)
+            success = generate_narration_file(
+                text_to_narrate=narration_text,
+                output_filepath=temp_filepath,
+                lang=lang,
+                slow=slow,
+                force_new=True  # Force new generation for API requests
+            )
+
+            if not success:
+                raise Exception("Narration generation failed")
             
             # Generate a unique ID for the file
             file_id = str(uuid.uuid4())

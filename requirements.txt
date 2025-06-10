@@ -2,7 +2,9 @@ Flask==3.1.1
 Flask-CORS==6.0.0
 requests==2.32.3
 gTTS==2.5.4
+elevenlabs==2.3.0
 gunicorn==22.0.0
 pydub==0.25.1
 python-dotenv==1.0.0
-pygame==2.6.1 
+pygame==2.6.1
+num2words==0.5.13 
