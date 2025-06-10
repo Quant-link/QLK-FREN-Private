@@ -37,8 +37,8 @@ export function CryptoChart({ crypto, currency, days, className = '' }: CryptoCh
             formattedPrice: new Intl.NumberFormat('en-US', {
               style: 'currency',
               currency: currency.toUpperCase(),
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 6,
+              minimumFractionDigits: price < 1 ? 4 : 2,
+              maximumFractionDigits: price < 1 ? 4 : 2,
             }).format(price),
           }));
           
@@ -57,11 +57,12 @@ export function CryptoChart({ crypto, currency, days, className = '' }: CryptoCh
   }, [crypto, currency, days]);
 
   const formatPrice = (value: number) => {
+    const fraction = value < 1 ? 4 : 2;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency.toUpperCase(),
-      minimumFractionDigits: 2,
-      maximumFractionDigits: value < 1 ? 6 : 2,
+      minimumFractionDigits: fraction,
+      maximumFractionDigits: fraction,
     }).format(value);
   };
 
