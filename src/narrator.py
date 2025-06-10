@@ -7,6 +7,7 @@ import logging
 import tempfile
 import hashlib
 import time
+import inflect
 from typing import Dict, Tuple, Optional, List, Any, Union
 from src.app_config import app_settings  # Import the application settings
 from src.elevenlabs_tts import is_elevenlabs_available, generate_elevenlabs_speech
@@ -24,6 +25,9 @@ try:
 except Exception as e:
     logger.warning(f"Pygame mixer initialization failed: {e}. Audio playback may not work.")
 
+# Create an instance of the inflect engine
+p = inflect.engine()
+
 # Use temp audio file from app_settings if available
 TEMP_AUDIO_FILE = (
     app_settings.temp_audio_file if app_settings else "temp_price_narration.mp3"
@@ -34,6 +38,44 @@ TEMP_AUDIO_FILE = (
 _narration_cache: Dict[str, Tuple[float, str]] = {}
 # Cache expiration time in seconds (default: 5 minutes)
 CACHE_EXPIRATION = app_settings.cache_expiration if app_settings and hasattr(app_settings, 'cache_expiration') else 300
+
+
+def _format_price_in_words(price: float, currency: str) -> str:
+    """
+    Converts a price and currency into a natural language string.
+    
+    Args:
+        price (float): The price to convert.
+        currency (str): The currency code (e.g., "USD").
+        
+    Returns:
+        str: A string like "one hundred dollars and fifty cents".
+    """
+    dollars = int(price)
+    cents = int(round((price - dollars) * 100))
+    
+    # Basic currency name mapping
+    currency_map = {
+        "USD": "dollar",
+        "EUR": "euro",
+        "GBP": "pound",
+        "JPY": "yen"
+    }
+    currency_name = currency_map.get(currency.upper(), currency.upper())
+    
+    # Convert dollar amount to words
+    price_words = p.number_to_words(dollars)
+    currency_words = p.plural_noun(currency_name, dollars)
+    
+    result = f"{price_words} {currency_words}"
+    
+    # Add cents if they exist
+    if cents > 0:
+        cent_words = p.number_to_words(cents)
+        cent_currency_name = p.plural_noun("cent", cents)
+        result += f" and {cent_words} {cent_currency_name}"
+        
+    return result
 
 
 def _generate_cache_key(text_to_narrate: str, lang: str, slow: bool) -> str:
@@ -220,46 +262,46 @@ def narrate_price(
     force_new: bool = False,
 ) -> bool:
     """
-    Narrates the given cryptocurrency name and price using gTTS.
+    Narrates the price of a single cryptocurrency.
     
     Args:
         crypto_name (str): The name of the cryptocurrency.
         price (float): The price of the cryptocurrency.
-        currency (str): The currency of the price (e.g., "USD", "EUR").
+        currency (str): The currency of the price.
         lang (str): The language for narration.
         slow (bool): Whether to narrate slowly.
-        force_new (bool): Force creation of new narration even if cached version exists.
+        force_new (bool): Force creation of new narration even if cached.
         
     Returns:
         bool: True if narration was successful, False otherwise.
     """
-    if not app_settings:
-        logger.error(
-            "App settings not loaded. Narration may use defaults & might not function as expected."
-        )
+    logger.info(f"Narrating price for {crypto_name}: {price} {currency}")
 
-    # Set default values based on app_settings
+    # Format the price into natural language
+    price_in_words = _format_price_in_words(price, currency)
+    
+    # Construct the full text to be narrated, including the break tag
+    base_text = f"The current price for {crypto_name} is <break time=\"0.3s\" /> {price_in_words}."
+    
+    # Get default values from app_settings
     narration_language = lang
     narration_is_slow = slow
     keep_on_error = False
 
     if app_settings:
-        if not lang or lang == "en":  # Only use app_settings if default language was used
+        if not lang or lang == "en":
             narration_language = app_settings.narration_lang
-        if not isinstance(slow, bool):  # Only use app_settings if default slow was used
+        if not isinstance(slow, bool):
             narration_is_slow = app_settings.narration_slow
         if hasattr(app_settings, 'keep_audio_on_error'):
             keep_on_error = app_settings.keep_audio_on_error
-    else:
-        logger.warning(f"Using default narration language: {narration_language}")
-        logger.warning(f"Using default narration speed (slow={narration_is_slow})")
-
-    # Format price with thousands separator and 2 decimal places
-    price_str = f"{price:,.2f}"
-    text_to_narrate = f"The current price for {crypto_name} is {price_str} {currency}."
-
+            
+    # Wrap with prosody tag for speech rate control
+    speech_rate = app_settings.elevenlabs_speech_rate if app_settings else "medium"
+    narration_text = f'<prosody rate="{speech_rate}">{base_text}</prosody>'
+            
     return narrate_text(
-        text_to_narrate, 
+        narration_text, 
         lang=narration_language, 
         slow=narration_is_slow, 
         force_new=force_new, 
@@ -300,29 +342,29 @@ def narrate_price_with_change(
     price = crypto_data.get("current_price", 0.0)
     currency = crypto_data.get("currency", "USD")
     
-    # Format price with thousands separator and 2 decimal places
-    price_str = f"{price:,.2f}"
+    # Format the price into natural language
+    price_in_words = _format_price_in_words(price, currency)
     
     # Start with the current price
-    narration_text = f"The current price for {crypto_name} is {price_str} {currency}."
+    base_text = f"The current price for {crypto_name} is <break time=\"0.3s\" /> {price_in_words}."
     
-    # Add 24-hour change if requested and available
+    # Add 24-hour change if available
     if include_24h and "price_change_24h" in crypto_data and crypto_data["price_change_24h"] is not None:
         change_24h = crypto_data["price_change_24h"]
         direction = "up" if change_24h >= 0 else "down"
-        narration_text += f" It has gone {direction} {abs(change_24h):.2f} percent in the last 24 hours."
+        base_text += f" It has gone {direction} {abs(change_24h):.2f} percent in the last 24 hours."
     
     # Add 7-day change if requested and available
     if include_7d and "price_change_7d" in crypto_data and crypto_data["price_change_7d"] is not None:
         change_7d = crypto_data["price_change_7d"]
         direction = "up" if change_7d >= 0 else "down"
-        narration_text += f" Over the past 7 days, it has gone {direction} {abs(change_7d):.2f} percent."
+        base_text += f" Over the past 7 days, it has gone {direction} {abs(change_7d):.2f} percent."
     
     # Add 30-day change if requested and available
     if include_30d and "price_change_30d" in crypto_data and crypto_data["price_change_30d"] is not None:
         change_30d = crypto_data["price_change_30d"]
         direction = "up" if change_30d >= 0 else "down"
-        narration_text += f" In the last 30 days, it has gone {direction} {abs(change_30d):.2f} percent."
+        base_text += f" In the last 30 days, it has gone {direction} {abs(change_30d):.2f} percent."
     
     # Get default values from app_settings
     narration_language = lang
@@ -337,6 +379,10 @@ def narrate_price_with_change(
         if hasattr(app_settings, 'keep_audio_on_error'):
             keep_on_error = app_settings.keep_audio_on_error
             
+    # Wrap with prosody tag for speech rate control
+    speech_rate = app_settings.elevenlabs_speech_rate if app_settings else "medium"
+    narration_text = f'<prosody rate="{speech_rate}">{base_text}</prosody>'
+
     return narrate_text(
         narration_text, 
         lang=narration_language, 
@@ -568,9 +614,20 @@ def narrate_multiple_prices(
         if hasattr(app_settings, 'keep_audio_on_error'):
             keep_on_error = app_settings.keep_audio_on_error
     
-    # Narrate introduction if requested
-    if narrate_intro and crypto_data_list:
-        intro_text = f"Here are the current prices for {len(crypto_data_list)} cryptocurrencies."
+    # Narrate introduction only if there is more than one crypto
+    if narrate_intro and crypto_data_list and len(crypto_data_list) > 1:
+        count = len(crypto_data_list)
+        # Use inflect for grammatically correct intro
+        base_text = (
+            f"Here {p.plural_verb('is', count)} the latest "
+            f"{p.plural_noun('price', count)} for {p.number_to_words(count)} "
+            f"{p.plural_noun('cryptocurrency', count)}."
+        )
+        
+        # Wrap with prosody tag for speech rate control
+        speech_rate = app_settings.elevenlabs_speech_rate if app_settings else "medium"
+        intro_text = f'<prosody rate="{speech_rate}">{base_text}</prosody>'
+        
         narrate_text(intro_text, lang=narration_language, slow=narration_is_slow, force_new=force_new)
         
     success_count = 0

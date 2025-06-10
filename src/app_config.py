@@ -147,6 +147,9 @@ class AppConfig:
         self.elevenlabs_model_id = self.config.get(
             "ElevenLabs", "MODEL_ID", fallback="eleven_multilingual_v2"
         )
+        self.elevenlabs_speech_rate = self.config.get(
+            "ElevenLabs", "SPEECH_RATE", fallback="medium"
+        )
         self.elevenlabs_stability = self.config.getfloat(
             "ElevenLabs", "STABILITY", fallback=0.5
         )
@@ -284,6 +287,7 @@ class AppConfig:
         self.config.set("ElevenLabs", "API_KEY", str(self.elevenlabs_api_key))
         self.config.set("ElevenLabs", "VOICE_ID", str(self.elevenlabs_voice_id))
         self.config.set("ElevenLabs", "MODEL_ID", str(self.elevenlabs_model_id))
+        self.config.set("ElevenLabs", "SPEECH_RATE", str(self.elevenlabs_speech_rate))
         self.config.set("ElevenLabs", "STABILITY", str(self.elevenlabs_stability))
         self.config.set("ElevenLabs", "SIMILARITY_BOOST", str(self.elevenlabs_similarity_boost))
         self.config.set("ElevenLabs", "STYLE", str(self.elevenlabs_style))

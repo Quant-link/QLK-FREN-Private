@@ -4,11 +4,15 @@ import logging
 import argparse
 import time
 import uuid
+import inflect
 from flask import Flask, request, jsonify, send_file, Response, send_from_directory
 from flask_cors import CORS
 from src.price_fetcher import get_crypto_price, get_crypto_price_with_change, get_multiple_crypto_prices, get_crypto_historical_data
 from src.narrator import generate_narration_file
 from src.app_config import app_settings
+
+# Create an instance of the inflect engine for natural language formatting
+p = inflect.engine()
 
 # Configure logging
 logging.basicConfig(
@@ -25,6 +29,58 @@ CORS(app)  # Enable CORS for all routes
 # Dictionary to store temporary audio files
 # Format: {file_id: (filepath, expiration_timestamp)}
 temp_files = {}
+
+
+def _format_price_in_words(price: float, currency: str) -> str:
+    """
+    Converts a price and currency into a natural language string.
+    
+    Args:
+        price (float): The price to convert.
+        currency (str): The currency code (e.g., "USD").
+        
+    Returns:
+        str: A string like "one hundred dollars and fifty cents".
+    """
+    dollars = int(price)
+    cents = int(round((price - dollars) * 100))
+    
+    # Basic currency name mapping
+    currency_map = {
+        "USD": "dollar",
+        "EUR": "euro", 
+        "GBP": "pound",
+        "JPY": "yen"
+    }
+    currency_name = currency_map.get(currency.upper(), currency.upper())
+    
+    # Convert dollar amount to words
+    price_words = p.number_to_words(dollars)
+    currency_words = p.plural_noun(currency_name, dollars)
+    
+    result = f"{price_words} {currency_words}"
+    
+    # Add cents if they exist
+    if cents > 0:
+        cent_words = p.number_to_words(cents)
+        cent_currency_name = p.plural_noun("cent", cents)
+        result += f" and {cent_words} {cent_currency_name}"
+        
+    return result
+
+
+def _format_narration_text(base_text: str) -> str:
+    """
+    Applies SSML formatting for better speech synthesis.
+    
+    Args:
+        base_text (str): The base text to format.
+        
+    Returns:
+        str: The formatted text with SSML tags.
+    """
+    speech_rate = app_settings.elevenlabs_speech_rate if app_settings else "medium"
+    return f'<prosody rate="{speech_rate}">{base_text}</prosody>'
 
 
 @app.route('/api/health', methods=['GET'])
@@ -154,8 +210,11 @@ def narrate_custom_text():
         
         # Generate audio without playing it
         try:
+            # Apply SSML formatting for better speech synthesis
+            formatted_text = _format_narration_text(text)
+            
             success = generate_narration_file(
-                text_to_narrate=text,
+                text_to_narrate=formatted_text,
                 output_filepath=temp_filepath,
                 lang=lang,
                 slow=slow,
@@ -292,12 +351,15 @@ def narrate_crypto_price():
                     "price_data": price_data
                 }), 404
                 
-            # Build narration text
+            # Build narration text with natural language formatting
             crypto_name = price_data.get("name", "Unknown")
             price = price_data.get("current_price", 0.0)
             currency_code = price_data.get("currency", "USD")
             
-            narration_text = f"The current price for {crypto_name} is {price:,.2f} {currency_code}."
+            # Format the price into natural language
+            price_in_words = _format_price_in_words(price, currency_code)
+            
+            narration_text = f"The current price for {crypto_name} is <break time=\"0.3s\" /> {price_in_words}."
             
             # Add 24-hour change if available
             if include_24h and "price_change_24h" in price_data and price_data["price_change_24h"] is not None:
@@ -333,8 +395,9 @@ def narrate_crypto_price():
                 "success": True
             }
             
-            # Build narration text
-            narration_text = f"The current price for {name} is {price:,.2f} {currency.upper()}."
+            # Build narration text with natural language formatting
+            price_in_words = _format_price_in_words(price, currency.upper())
+            narration_text = f"The current price for {name} is <break time=\"0.3s\" /> {price_in_words}."
         
         # Create temporary file for the audio
         with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_file:
@@ -342,8 +405,11 @@ def narrate_crypto_price():
         
         # Generate audio without playing it
         try:
+            # Apply SSML formatting for better speech synthesis
+            formatted_narration_text = _format_narration_text(narration_text)
+            
             success = generate_narration_file(
-                text_to_narrate=narration_text,
+                text_to_narrate=formatted_narration_text,
                 output_filepath=temp_filepath,
                 lang=lang,
                 slow=slow,
