@@ -30,6 +30,47 @@ CORS(app)  # Enable CORS for all routes
 # Format: {file_id: (filepath, expiration_timestamp)}
 temp_files = {}
 
+# Directory for shared temporary files (works across multiple workers)
+SHARED_TEMP_DIR = "/tmp/quantlink-audio"
+
+def _ensure_temp_dir():
+    """Ensure the shared temporary directory exists."""
+    os.makedirs(SHARED_TEMP_DIR, exist_ok=True)
+
+def _get_file_info_path(file_id: str) -> str:
+    """Get the path for a file's metadata info."""
+    return os.path.join(SHARED_TEMP_DIR, f"{file_id}.info")
+
+def _store_file_info(file_id: str, filepath: str, expiration: float):
+    """Store file information in filesystem for multi-worker access."""
+    _ensure_temp_dir()
+    info_path = _get_file_info_path(file_id)
+    with open(info_path, 'w') as f:
+        f.write(f"{filepath}\n{expiration}")
+
+def _get_file_info(file_id: str) -> tuple:
+    """Get file information from filesystem."""
+    info_path = _get_file_info_path(file_id)
+    if not os.path.exists(info_path):
+        return None, None
+    
+    try:
+        with open(info_path, 'r') as f:
+            lines = f.read().strip().split('\n')
+            if len(lines) >= 2:
+                return lines[0], float(lines[1])
+    except (ValueError, IndexError):
+        pass
+    return None, None
+
+def _cleanup_file_info(file_id: str):
+    """Remove file info when cleaning up."""
+    info_path = _get_file_info_path(file_id)
+    if os.path.exists(info_path):
+        try:
+            os.remove(info_path)
+        except Exception:
+            pass
 
 def _format_price_in_words(price: float, currency: str) -> str:
     """
@@ -205,8 +246,8 @@ def narrate_custom_text():
         return_audio = data.get('return_audio', False)
         
         # Create temporary file for the audio
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_file:
-            temp_filepath = temp_file.name
+        _ensure_temp_dir()
+        temp_filepath = os.path.join(SHARED_TEMP_DIR, f"{uuid.uuid4()}.mp3")
         
         # Generate audio without playing it
         try:
@@ -229,7 +270,7 @@ def narrate_custom_text():
             
             # Store the file path with an expiration time (30 minutes from now)
             expiration = time.time() + (30 * 60)  # 30 minutes
-            temp_files[file_id] = (temp_filepath, expiration)
+            _store_file_info(file_id, temp_filepath, expiration)
             
             # Clean up expired files
             _cleanup_expired_files()
@@ -269,29 +310,29 @@ def get_audio_file(file_id):
     """
     try:
         # Check if the file exists and is not expired
-        if file_id in temp_files:
-            filepath, expiration = temp_files[file_id]
-            
-            if time.time() > expiration:
-                # File has expired
-                del temp_files[file_id]
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-                return jsonify({"success": False, "error": "Audio file has expired"}), 404
-                
-            if os.path.exists(filepath):
-                return send_file(
-                    filepath,
-                    mimetype="audio/mpeg",
-                    as_attachment=True,
-                    download_name=f"narration_{file_id}.mp3"
-                )
-            else:
-                # File was removed from disk
-                del temp_files[file_id]
-                return jsonify({"success": False, "error": "Audio file not found"}), 404
-        else:
+        filepath, expiration = _get_file_info(file_id)
+        
+        if filepath is None:
             return jsonify({"success": False, "error": "Invalid file ID"}), 404
+            
+        if time.time() > expiration:
+            # File has expired
+            _cleanup_file_info(file_id)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({"success": False, "error": "Audio file has expired"}), 404
+                
+        if os.path.exists(filepath):
+            return send_file(
+                filepath,
+                mimetype="audio/mpeg",
+                as_attachment=True,
+                download_name=f"narration_{file_id}.mp3"
+            )
+        else:
+            # File was removed from disk
+            _cleanup_file_info(file_id)
+            return jsonify({"success": False, "error": "Audio file not found"}), 404
     
     except Exception as e:
         logger.error(f"Error in get_audio_file endpoint: {e}", exc_info=True)
@@ -400,8 +441,8 @@ def narrate_crypto_price():
             narration_text = f"The current price for {name} is <break time=\"0.3s\" /> {price_in_words}."
         
         # Create temporary file for the audio
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_file:
-            temp_filepath = temp_file.name
+        _ensure_temp_dir()
+        temp_filepath = os.path.join(SHARED_TEMP_DIR, f"{uuid.uuid4()}.mp3")
         
         # Generate audio without playing it
         try:
@@ -424,7 +465,7 @@ def narrate_crypto_price():
             
             # Store the file path with an expiration time (30 minutes from now)
             expiration = time.time() + (30 * 60)  # 30 minutes
-            temp_files[file_id] = (temp_filepath, expiration)
+            _store_file_info(file_id, temp_filepath, expiration)
             
             # Clean up expired files
             _cleanup_expired_files()
@@ -492,20 +533,29 @@ def get_historical_data():
 def _cleanup_expired_files():
     """Clean up expired temporary files."""
     current_time = time.time()
-    expired_ids = []
+    _ensure_temp_dir()
     
-    for file_id, (filepath, expiration) in temp_files.items():
-        if current_time > expiration:
-            expired_ids.append(file_id)
-            if os.path.exists(filepath):
-                try:
-                    os.remove(filepath)
-                    logger.debug(f"Removed expired audio file: {filepath}")
-                except Exception as e:
-                    logger.error(f"Error removing expired file {filepath}: {e}")
-    
-    for file_id in expired_ids:
-        del temp_files[file_id]
+    # Look for .info files in the shared temp directory
+    try:
+        for filename in os.listdir(SHARED_TEMP_DIR):
+            if filename.endswith('.info'):
+                file_id = filename[:-5]  # Remove .info extension
+                filepath, expiration = _get_file_info(file_id)
+                
+                if filepath and current_time > expiration:
+                    # Remove expired audio file
+                    if os.path.exists(filepath):
+                        try:
+                            os.remove(filepath)
+                            logger.debug(f"Removed expired audio file: {filepath}")
+                        except Exception as e:
+                            logger.error(f"Error removing expired file {filepath}: {e}")
+                    
+                    # Remove info file
+                    _cleanup_file_info(file_id)
+                    
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
 
 
 @app.route('/', methods=['GET'])
