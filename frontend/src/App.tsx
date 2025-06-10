@@ -10,6 +10,7 @@ import {
 import { getCryptoIcon, getCryptoDisplayName } from "./utils/cryptoIcons";
 import { CryptoChart } from "./components/CryptoChart";
 import { MetaMaskWallet } from "./components/MetaMaskWallet";
+import MobileNav from "./components/MobileNav";
 import {
   WalletIcon,
   SettingsIcon,
@@ -227,29 +228,29 @@ function App() {
     <>
       <div className="bg-linear-to-b from-[#f1f1f5] to-[#c9d6e3] w-screen h-screen absolute z-[-1]"></div>
       <div className="overflow-y-auto h-screen">
-        <div className="text-[#151F24] flex flex-col h-full">
+        <div className="text-[#151F24] flex flex-col h-full pb-24 md:pb-0">
           <header className="shrink-0 fixed top-0 left-0 right-0 z-50 bg-[#e8eef5] backdrop-blur-sm border-b border-white/30 shadow-sm">
-            <div className="container mx-auto flex items-center justify-between py-8 ">
+            <div className="container mx-auto flex items-center justify-between py-4 md:py-8 px-4 md:px-0">
               <div className="transform hover:scale-105 transition-transform duration-300">
                 <img src="/logo.svg" alt="Quantlink" />
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-2 md:gap-4">
                 <button 
-                  className={`w-[56px] h-[56px] rounded-full ${showWallet ? 'bg-blue-500 text-white scale-105' : 'bg-white/90 hover:bg-white hover:scale-110'} flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl`}
+                  className={`w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full ${showWallet ? 'bg-blue-500 text-white scale-105' : 'bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110'} flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl`}
                   onClick={handleWalletClick}
                   title="Wallet"
                 >
                   <WalletIcon size={24} />
                 </button>
                 <button 
-                  className="w-[56px] h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+                  className="w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
                   onClick={handleAnalyticsClick}
                   title="Analytics"
                 >
                   <AnalyticsIcon size={24} />
                 </button>
                 <button 
-                  className="w-[56px] h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+                  className="w-[44px] h-[44px] md:w-[56px] md:h-[56px] rounded-full bg-white/90 hover:bg-white hover:scale-105 md:hover:scale-110 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
                   onClick={handleSettingsClick}
                   title="Settings"
                 >
@@ -276,8 +277,8 @@ function App() {
             </div>
           )}
 
-          <div className="container mx-auto grid grid-cols-[64px_1fr] gap-8 h-full grow mt-[120px]">
-            <aside className="flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
+          <div className="container mx-auto grid grid-cols-1 md:grid-cols-[64px_1fr] gap-4 md:gap-8 h-full grow mt-[120px]">
+            <aside className="hidden md:flex flex-col justify-between h-full sticky top-[120px] max-h-[calc(100vh-192px)]">
               <div className="flex flex-col gap-4">
                 <button 
                   className={`w-[64px] h-[64px] rounded-[18px] ${activeSection === 'home' ? 'bg-blue-500 text-white scale-105 shadow-lg' : 'bg-white hover:bg-gray-50 hover:scale-105'} transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg group`}
@@ -346,7 +347,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 mt-[48px] gap-[24px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 mt-[32px] md:mt-[48px] gap-[16px] md:gap-[24px]">
                 <div className="bg-white rounded-[18px] px-[24px] py-[20px] font-space-grotesk shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                   <div className="flex items-center gap-[10px] mb-4">
                     <svg
@@ -557,7 +558,7 @@ function App() {
                     <div className="text-[25px] leading-8">Live</div>
                     <div className="text-[40px] leading-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Price Feed</div>
                   </div>
-                  <div className="grid grid-cols-2 grid-rows-3 gap-[12px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-rows-3 gap-[12px]">
                     {popularCryptos.map((crypto, index) => {
                       const priceData = livePrices[crypto];
                       return (
@@ -601,7 +602,7 @@ function App() {
 
               {/* Price Chart Section */}
               <div className="mt-[48px] transform hover:scale-[1.01] transition-transform duration-500">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-0 mb-4 md:mb-6">
                   <div className="flex flex-col">
                     <div className="text-[24px] font-[600] bg-gradient-to-r from-gray-700 to-gray-900 bg-clip-text text-transparent">Price History</div>
                     <div className="text-[18px] text-gray-600 animate-fade-in">
@@ -636,6 +637,8 @@ function App() {
             </main>
           </div>
         </div>
+        {/* Mobile Bottom Navigation */}
+        <MobileNav activeSection={activeSection} onNavigate={handleNavigation} />
       </div>
     </>
   );
