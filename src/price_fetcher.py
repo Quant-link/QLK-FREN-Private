@@ -545,11 +545,19 @@ def get_crypto_historical_data(
 
     # CoinGecko historical data endpoint
     url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart"
+    
+    # Build query params for historical endpoint.
+    # CoinGecko recommends leaving the `interval` param empty for a 1-day range,
+    # otherwise the request may return 400. For >1 days we can safely request
+    # the coarser `daily` data to keep payload small.
     params = {
         "vs_currency": vs_currency,
         "days": days,
-        "interval": "hourly" if days <= 1 else "daily"
     }
+
+    if days > 1:
+        # Use daily granularity for 2+ days to reduce payload size.
+        params["interval"] = "daily"
 
     current_delay = INITIAL_BACKOFF_DELAY
     last_exception = None

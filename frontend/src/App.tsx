@@ -178,9 +178,12 @@ function App() {
   };
 
   // Format percentage change
-  const formatPercentChange = (change: number) => {
-    const sign = change >= 0 ? '+' : '';
-    return `${sign}${change.toFixed(2)}%`;
+  const formatPercentChange = (change: number | null | undefined) => {
+    if (change === null || change === undefined || isNaN(change as number)) {
+      return 'N/A';
+    }
+    const sign = (change as number) >= 0 ? '+' : '';
+    return `${sign}${(change as number).toFixed(2)}%`;
   };
 
   // Navigation handlers
@@ -511,17 +514,17 @@ function App() {
                         <p className="text-2xl font-bold text-[#4cafd8] animate-pulse">
                           {formatPrice(currentPrice.current_price)}
                         </p>
-                        {currentPrice.price_change_24h !== undefined && (
+                        {currentPrice.price_change_24h !== undefined && currentPrice.price_change_24h !== null && (
                           <p className={`text-sm transition-all duration-300 ${currentPrice.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             24h: {formatPercentChange(currentPrice.price_change_24h)}
                           </p>
                         )}
-                        {currentPrice.price_change_7d !== undefined && (
+                        {currentPrice.price_change_7d !== undefined && currentPrice.price_change_7d !== null && (
                           <p className={`text-sm transition-all duration-300 ${currentPrice.price_change_7d >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             7d: {formatPercentChange(currentPrice.price_change_7d)}
                           </p>
                         )}
-                        {currentPrice.price_change_30d !== undefined && (
+                        {currentPrice.price_change_30d !== undefined && currentPrice.price_change_30d !== null && (
                           <p className={`text-sm transition-all duration-300 ${currentPrice.price_change_30d >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             30d: {formatPercentChange(currentPrice.price_change_30d)}
                           </p>
@@ -587,9 +590,9 @@ function App() {
                                 </div>
                               )}
                             </div>
-                            {priceData?.price_change_24h !== undefined && (
-                              <div className={`text-sm transition-all duration-500 ${priceData.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {formatPercentChange(priceData.price_change_24h)}
+                            {priceData?.price_change_24h !== undefined && priceData?.price_change_24h !== null && (
+                              <div className={`text-sm transition-all duration-500 ${priceData.price_change_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}> 
+                                {formatPercentChange(priceData.price_change_24h)} 
                               </div>
                             )}
                           </div>
